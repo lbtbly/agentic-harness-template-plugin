@@ -26,4 +26,7 @@ jobs:
           fetch-depth: 1
       - uses: anthropics/claude-code-action@v1
         with:
+          # ONE auth lane (set exactly one repo secret — ADR-0019):
+          # subscription (preferred): claude_code_oauth_token; metered: anthropic_api_key
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}

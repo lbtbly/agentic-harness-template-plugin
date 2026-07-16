@@ -51,6 +51,16 @@ for p in core formatting; do
   check "plugin $p hook commands resolve via CLAUDE_PLUGIN_ROOT" $bad
 done
 
+# field-test findings (2026-07-16): the scaffolded base must carry BOTH safety
+# invariants enable-orchestrator's guard checks, the chosen CI forge must reach
+# state.config.json (pull-feedback's source), and CI templates offer the
+# subscription auth lane (ADR-0019)
+jq -e '.permissions.defaultMode == "plan"' "$R/plugins/core/templates/settings.json" >/dev/null 2>&1; check "settings template: defaultMode plan" $?
+jq -e '.disableBypassPermissionsMode == "disable"' "$R/plugins/core/templates/settings.json" >/dev/null 2>&1; check "settings template: disableBypassPermissionsMode present" $?
+grep -q 'state.config.json.*forge\|forge.*state.config.json' "$R/plugins/core/skills/new-project/SKILL.md"; check "new-project records the chosen forge in state.config.json" $?
+grep -q "CLAUDE_CODE_OAUTH_TOKEN" "$R/plugins/ci/skills/setup/SKILL.md"; check "ci setup skill offers the subscription token lane" $?
+grep -q "claude_code_oauth_token" "$R/plugins/ci/templates/github/claude.yml"; check "ci claude.yml supports the subscription token" $?
+
 # the scaffolder skill exists and bakes in the reload gotcha
 NP="$R/plugins/core/skills/new-project/SKILL.md"
 [ -f "$NP" ]; check "new-project scaffolder exists" $?

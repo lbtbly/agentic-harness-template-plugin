@@ -80,6 +80,10 @@ plugin and it does **not** park/compose anything — optional capabilities are a
      `cp "$T/orchestrator/state.config.json" orchestrator/state.config.json`.
    - **Keep only the chosen backend's adapter**: `none` → copy no `pm-*.js`;
      `<backend>` → `cp "$T/orchestrator/adapters/pm-<backend>.js" orchestrator/adapters/`.
+   - **Record the CI forge** (from the questionnaire) in `orchestrator/state.config.json`'s
+     `forge` field — it is the source `pull-feedback` reads PR signals from, independent of
+     the board backend. `forge: none` only if no forge was chosen (the loop then cannot be
+     driven until one is set).
    - **jira / notion**: after scaffolding, run `/core:board-setup` — it provisions the
      board (database/project) with the 12-state epic lifecycle and wires it into
      `state.config.json`. Mention it in the final summary alongside the plugin installs.

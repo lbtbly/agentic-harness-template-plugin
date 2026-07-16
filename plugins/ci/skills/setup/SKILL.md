@@ -14,10 +14,12 @@ policy-protected (`protect-policy-paths`), so write them via Bash with the user'
 2. **Scaffold**:
    - github → `mkdir -p .github/workflows && cp "${CLAUDE_PLUGIN_ROOT}/templates/github/"*.yml .github/workflows/`
      (`claude.yml` = PR assistant, `claude-review.yml` = auto-review). Tell the user to set
-     the `ANTHROPIC_API_KEY` repository secret.
+     ONE auth secret: `CLAUDE_CODE_OAUTH_TOKEN` (subscription, from `claude setup-token` —
+     preferred, ADR-0019) or `ANTHROPIC_API_KEY` (metered; takes precedence if both are set).
    - gitlab → merge `${CLAUDE_PLUGIN_ROOT}/templates/gitlab/.gitlab-ci.yml` into the project's
-     `.gitlab-ci.yml` (create it if absent). Tell the user to set `ANTHROPIC_API_KEY` as a
-     **masked + protected** CI/CD variable.
+     `.gitlab-ci.yml` (create it if absent). Tell the user to set ONE auth
+     variable — `CLAUDE_CODE_OAUTH_TOKEN` (subscription, preferred) or `ANTHROPIC_API_KEY`
+     (metered) — as **masked + protected** CI/CD variables.
 
 3. **Do NOT** put a secret value in any file — only names. **Do NOT** enable the nightly
    orchestrator here (that is `/orchestrator:enable-orchestrator`, which installs
