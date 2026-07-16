@@ -23,6 +23,8 @@ check "skill provisions all 12 lifecycle states" $miss
 grep -q "state.config.json" "$SK"; check "skill records the board in state.config.json" $?
 grep -qi "never.*value\|NAMES only\|name only" "$SK"; check "skill handles token NAMES, never values" $?
 grep -q "orch state health" "$SK"; check "skill verifies with orch state health" $?
+grep -qi "MCP-first\|MCP connector" "$SK"; check "skill offers the credential-free MCP lane first" $?
+grep -qi "only.*enable-orchestrator\|defer.*token" "$SK"; check "skill defers tokens to unattended-loop enablement" $?
 grep -qi "forge.*never\|never.*board.*feedback\|feedback.*forge" "$SK"; check "skill restates: feedback comes from the forge, never the board" $?
 
 # --- new-project points remote-board users at the skill ---

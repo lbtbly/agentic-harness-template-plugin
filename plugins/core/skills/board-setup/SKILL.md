@@ -22,6 +22,17 @@ Remember the split the whole design rests on: **the board shows state; your
 approvals are read from the forge (the PR), never the board** — commenting on a
 Notion page or Jira issue does nothing to the loop.
 
+## Two lanes — use the one that's available
+
+**MCP-first (no credentials):** if the session has an Atlassian/Jira or Notion MCP
+connector, use IT for everything this skill does — creating the database/issues,
+setting properties/labels, the verification roundtrip. Do not ask for a token.
+**Token lane (only for the unattended loop):** the `pm-jira.js`/`pm-notion.js`
+adapters run headlessly from cron, where interactive MCP OAuth does not exist
+(ADR-0007) — so the env-var NAMES below become necessary only at
+`/orchestrator:enable-orchestrator` time. Provisioning today needs none of them;
+say so plainly and defer the token step until the loop is enabled.
+
 ## ASK (AskUserQuestion)
 
 1. **Backend**: `notion` · `jira` (or confirm the one already in
@@ -31,16 +42,17 @@ Notion page or Jira issue does nothing to the loop.
      and confirm the integration is shared with that page.
    - jira → site URL (`https://<org>.atlassian.net`), and create a new
      team-managed Kanban project or reuse an existing one (ask the project key).
-3. **Credentials (NAMES only)**: notion → `NOTION_TOKEN` (internal integration).
-   jira → `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY`.
-   Tell the user where to set each (shell env / vault / CI secrets); add the
-   names to `.env.example`; never a value anywhere.
+3. **Credentials (NAMES only, and only if no MCP connector is available or the
+   unattended loop is being enabled)**: notion → `NOTION_TOKEN` (internal
+   integration). jira → `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`,
+   `JIRA_PROJECT_KEY`. Tell the user where to set each (shell env / vault / CI
+   secrets); add the names to `.env.example`; never a value anywhere.
 
 ## DO — Notion
 
-1. Create the database (REST `POST /v1/databases`, parent = the asked page;
-   interactively the notion MCP server may be used, but record everything so
-   headless REST works after — MCP oauth is fragile in cron):
+1. Create the database (via the Notion MCP connector when present, else REST
+   `POST /v1/databases`; parent = the asked page). Whichever lane created it,
+   record the databaseId so the headless REST adapter can drive it later:
    - Title: `<project> — orchestrator board`
    - Properties: `Name` (title — `[<epicId>] <epic title>`), `State` (select
      with EXACTLY the 12 lifecycle options above, in order), `Epic ID`
@@ -65,8 +77,11 @@ Notion page or Jira issue does nothing to the loop.
 
 ## VERIFY (both)
 
-1. `orchestrator/bin/orch state health` → `{ok: true, backend: <chosen>}` with
-   the credentials exported in the current shell.
+1. Roundtrip on the lane you used: MCP → create/read a smoke item via the
+   connector; token lane → `orchestrator/bin/orch state health` →
+   `{ok: true, backend: <chosen>}` with the credentials exported in the shell.
+   (Without a token the orch CLI adapter will rightly fail naming the env var —
+   expected until the unattended loop is enabled; don't present it as an error.)
 2. Roundtrip: `echo '{"id":"board-smoke","title":"smoke","state":"Backlog"}' |
    orch state push-epic` → visible on the board → `orch state pull-status` shows
    it → clean it up (move to Cancelled or delete).
