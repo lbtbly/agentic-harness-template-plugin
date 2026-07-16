@@ -1,0 +1,65 @@
+# Nightly orchestrator — GitLab CI runtime (ADR-0008). VPN-friendly:
+# self-hosted runner, masked+protected CI/CD variables, glab for state+feedback.
+# Installed by /orchestrator:enable-orchestrator (merged into .gitlab-ci.yml or included).
+# Create THREE pipeline schedules in GitLab UI, each setting one variable:
+#   ORCH_NIGHTLY=1  → build kick (after your morning kickoff, e.g. 12:30)
+#   ORCH_RETRY=1    → every ~2h retry lane (runs ONLY if it restored an expired pause)
+#   ORCH_DELIVER=1  → morning digest delivery at deliver_at (e.g. 08:15)
+# Egress firewall is MANDATORY and fail-closed (audit SEC-C1) — the runner
+# must allow NET_ADMIN (privileged or cap_add in runner config).
+nightly-orchestrator:
+  stage: deploy
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && ($ORCH_NIGHTLY == "1" || $ORCH_RETRY == "1")'
+  resource_group: nightly-orchestrator   # never two builds at once (audit L-I2)
+  timeout: 5h
+  tags: [self-hosted]          # runner behind the VPN
+  image: mcr.microsoft.com/devcontainers/base:debian   # sandbox base
+  variables:
+    GIT_DEPTH: '0'
+    ORCH_MAX_EPICS: '4'
+    ORCH_BUDGET_TOKENS: '2000000'   # hard per-night cap (audit L-I1) — tune at enable time
+    ORCH_PLUGIN_MARKETPLACE_URL: 'https://gitlab.example.com/your-org/claude-code-template.git'  # where the plugin marketplace lives (internal mirror for VPN runners) — set at enable time
+    # AUTH (masked+protected CI/CD variables) — ONE lane: CLAUDE_CODE_OAUTH_TOKEN (subscription,
+    # from `claude setup-token`; never combine with --bare) OR ANTHROPIC_API_KEY (metered —
+    # it takes precedence, leave unset on the subscription lane). Plus GITLAB_TOKEN, GITLAB_HOST.
+  before_script:
+    - npm install -g @anthropic-ai/claude-code
+    - apt-get update -qq && apt-get install -yqq jq iptables curl git
+    # Fetch the orchestrator plugin — the nightly workflow lives in it,
+    # not the project. Clone BEFORE the firewall (fail-closed egress). run-with-limits.sh
+    # passes ORCH_PLUGIN_DIR to `claude -p --plugin-dir`. Adjust URL/ref at enable time.
+    - git clone --depth 1 $ORCH_PLUGIN_MARKETPLACE_URL /tmp/tmpl
+    - export ORCH_PLUGIN_DIR=/tmp/tmpl/plugins/orchestrator
+    - export ORCH_CORE_HOOKS=/tmp/tmpl/plugins/core/hooks
+    - bash .devcontainer/init-firewall.sh   # fail-closed — job dies without containment
+  script:
+    - export ORCH_LANE=$([ "$ORCH_RETRY" = "1" ] && echo retry || echo nightly)
+    - bash orchestrator/runtime/run-with-limits.sh
+  after_script:
+    # Persist digests + state to the orch/state branch (audit L-B3/L-B4)
+    - git config user.name orchestrator && git config user.email orchestrator@noreply.local
+    - git add -f docs/reports/nightly .orch 2>/dev/null || true
+    - git commit -m "orch state $(date -u +%F)" && git push origin +HEAD:refs/heads/orch/state || true
+  artifacts:
+    when: always
+    paths: [docs/reports/nightly/]
+    expire_in: 30 days
+
+deliver-digest:
+  stage: deploy
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $ORCH_DELIVER == "1"'
+  resource_group: nightly-digest   # independent of the build lock (audit L-I3)
+  tags: [self-hosted]
+  image: mcr.microsoft.com/devcontainers/base:debian
+  variables:
+    # SLACK_WEBHOOK_URL / SLACK_BOT_TOKEN+SLACK_CHANNEL, SENDGRID_API_KEY
+    #   → masked+protected CI/CD variables
+    GIT_DEPTH: '1'
+  before_script:
+    - apt-get update -qq && apt-get install -yqq jq curl git
+    # the build's checkout is gone — read digests from the orch/state branch (audit L-B3)
+    - git fetch origin orch/state && git checkout origin/orch/state -- docs/reports/nightly .orch || echo "no orch/state yet"
+  script:
+    - bash orchestrator/adapters/notify-digest.sh

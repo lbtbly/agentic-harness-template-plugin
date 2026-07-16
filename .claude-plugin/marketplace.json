@@ -1,0 +1,15 @@
+{
+  "name": "harness",
+  "owner": { "name": "lambertbouley" },
+  "metadata": {
+    "description": "The Overnight Harness — run a coding agent unattended overnight: DoD contracts, independent verification, risk-gated auto-merge, morning digests. A core scaffolder plus opt-in feature plugins.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    { "name": "core",         "source": "./plugins/core",         "description": "Core harness + /new-project scaffolder, guard hooks, state layer, review agents. Install first." },
+    { "name": "formatting",   "source": "./plugins/formatting",   "description": "Format-on-edit hook." },
+    { "name": "orchestrator", "source": "./plugins/orchestrator", "description": "The overnight autonomous EPIC loop: plan, build, verify, risk-gated merge, morning digest." },
+    { "name": "ci",           "source": "./plugins/ci",           "description": "GitHub Actions / GitLab CI assistant templates." },
+    { "name": "workbench",    "source": "./plugins/workbench",    "description": "Extra agents (security-auditor, refactorer, researcher, test-runner) + db-migration." }
+  ]
+}

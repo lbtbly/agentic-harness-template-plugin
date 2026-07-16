@@ -1,0 +1,7 @@
+{
+  "$comment": "Morning-digest delivery (ADR-0008). Filled by /orchestrator:enable-orchestrator. Runs as its OWN scheduled job at deliver_at so it lands before your morning review. Secrets are env NAMES only (SLACK_WEBHOOK_URL / SLACK_BOT_TOKEN+SLACK_CHANNEL, SENDGRID_API_KEY or a runner 'mail') — never here.",
+  "channels": [],
+  "deliver_at": "08:00",
+  "email_to": "",
+  "digest_url_base": ""
+}

@@ -1,0 +1,7 @@
+{
+  "name": "orchestrator",
+  "description": "The overnight autonomous EPIC loop: /enable-orchestrator (six verified preconditions), /kickoff (daily driver), /plan (DoD authoring + independent review), /run (run-to-completion with risk-gated auto-merge), /disable-orchestrator; planner + integration-checker agents; dod-verify + nightly-orchestrator workflows; runtime, risk-policy, CODEOWNERS and digest templates.",
+  "version": "1.0.0",
+  "author": { "name": "lambertbouley" },
+  "license": "MIT"
+}

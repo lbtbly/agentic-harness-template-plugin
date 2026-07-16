@@ -1,0 +1,36 @@
+# GitLab CI template — copied to .gitlab-ci.yml by /core:new-project (forge: gitlab|both).
+# Pragmatic Claude review on merge requests via headless `claude -p` (Agent SDK).
+# NOT full inline-comment parity (GitLab has no official claude-code-action) — it
+# posts a single MR note. Requires CI/CD variable ANTHROPIC_API_KEY (masked, protected).
+# Runs behind your VPN on your own runners; nothing GitHub-specific.
+
+stages: [review]
+
+claude-review:
+  stage: review
+  image: node:22-alpine
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  variables:
+    GIT_DEPTH: "50"
+  before_script:
+    - apk add --no-cache git jq curl bash
+    - npm install -g @anthropic-ai/claude-code
+  script:
+    - git fetch origin "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    - |
+      DIFF=$(git diff "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"...HEAD)
+      REVIEW=$(printf '%s' "$DIFF" | claude -p --bare \
+        --allowedTools 'Read,Glob,Grep' \
+        "Read docs/CODEMAP.md and the accepted ADRs first. Review this MR diff for correctness, \
+         coupling-rule compliance, security, and unjustified complexity. Output concise \
+         Blocking/Important/Minor findings. Diff follows:")
+    - |
+      # Post the review as a single MR note via the GitLab API.
+      curl -sf --request POST \
+        --header "PRIVATE-TOKEN: ${GITLAB_BOT_TOKEN:-$CI_JOB_TOKEN}" \
+        --data-urlencode "body=🤖 Claude review:\n\n${REVIEW}" \
+        "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/merge_requests/${CI_MERGE_REQUEST_IID}/notes" \
+        || echo "$REVIEW"
+  # ANTHROPIC_API_KEY is read from the environment by claude-code; set it as a
+  # masked+protected CI/CD variable (Settings → CI/CD → Variables). Never inline it.

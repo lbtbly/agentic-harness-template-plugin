@@ -1,0 +1,13 @@
+{
+  "$comment": "formatting: one PostToolUse hook that formats/lint-fixes edited files with the project's own tooling (config-gated, never blocking). policy-lib.sh is duplicated here because format-on-edit.sh sources it as a sibling and cross-plugin file refs are not supported.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/format-on-edit.sh\"" }
+        ]
+      }
+    ]
+  }
+}

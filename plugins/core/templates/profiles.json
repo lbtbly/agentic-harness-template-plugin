@@ -1,0 +1,8 @@
+{
+  "$comment": "Lookup table /core:new-project reads to pre-tick the optional-plugin checklist per profile, then print the /plugin install commands. core is ALWAYS installed (not listed here). Formerly a module-composition input; under the plugin model it only recommends which OPTIONAL plugins to install (ADR-0013/0014). The user can add/remove before confirming.",
+  "poc": [],
+  "solo-small": ["formatting"],
+  "solo-big": ["formatting"],
+  "team": ["formatting", "workbench", "ci"],
+  "autonomous": ["formatting", "orchestrator", "ci", "workbench"]
+}

@@ -1,5 +1,5 @@
 {
-  "$comment": "template-core hooks. Paths resolve via ${CLAUDE_PLUGIN_ROOT} (the plugin dir), NOT the project — the scripts read project data via $CLAUDE_PROJECT_DIR internally. Security invariants (secret-guard, protect-paths) are always-on; policy hooks self-gate via .claude/policy.json. Replaces the old generated .claude/settings.json hook wiring (ADR-0013/0014).",
+  "$comment": "core hooks. Paths resolve via ${CLAUDE_PLUGIN_ROOT} (the plugin dir), NOT the project — the scripts read project data via $CLAUDE_PROJECT_DIR internally. Security invariants (secret-guard, protect-paths) are always-on; policy hooks self-gate via .claude/policy.json. Replaces the old generated .claude/settings.json hook wiring (ADR-0013/0014).",
   "hooks": {
     "PreToolUse": [
       {

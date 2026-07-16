@@ -1,0 +1,7 @@
+{
+  "name": "ci",
+  "description": "CI assistant templates: /setup scaffolds the chosen forge's Claude workflows (PR assistant + auto-review). The nightly orchestrator schedule is NOT here — that is /orchestrator:enable-orchestrator.",
+  "version": "1.0.0",
+  "author": { "name": "lambertbouley" },
+  "license": "MIT"
+}

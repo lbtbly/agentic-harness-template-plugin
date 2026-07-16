@@ -1,0 +1,121 @@
+<!-- Morning digest — the SINGLE human touchpoint for an overnight run.
+     ONE FILE PER DAY. A same-date re-run APPENDS a <details> "Run N" block at the
+     end, never overwrites. Self-contained: inline CSS only, CSS-only tabs (no JS).
+     Mirrored to the state backend via `orch state push-digest`.
+
+     GENERATOR CONTRACT (how to fill this):
+     - Tabs are ORDINAL SLOTS, not ids. Emit, IN ORDER, inside .tabs:
+         <input id="t0" name="tab" type="radio" checked>   (Overview)
+         <input id="t1" name="tab" type="radio">           (epic 1)
+         … one <input id="tN"> per epic …
+       then <nav class="tabbar"> with one <label for="tK"> per tab in the same order,
+       then one <section class="panel"> per tab in the same order (Overview first).
+       The CSS activates slot K automatically (supports up to 12 tabs) — do NOT edit CSS.
+     - Each EPIC panel: recap · ticket link (remote board only — drop on `none`) ·
+       PR + commit(s) with approve/revise actions · "What to test" · gates · git diff.
+     - Replace every {{TOKEN}}; drop rows that don't apply. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nightly digest — {{DATE}}</title>
+<style>
+  :root{--bg:#f6f8fc;--card:#fff;--ink:#1a2233;--muted:#5a6478;--line:#dbe1ee;--accent:#4a6cf7;
+    --ok:#127a3e;--okbg:#e6f7ec;--warn:#8a5a00;--warnbg:#fff3d6;--hi:#b4232f;--hibg:#ffe3e8;
+    --add:#106b34;--addbg:#e6ffed;--del:#a01324;--delbg:#ffeef0;--hunk:#6a4bd0;}
+  @media (prefers-color-scheme:dark){:root{--bg:#0f1420;--card:#171d2b;--ink:#e6ebf5;--muted:#9aa6bd;--line:#2a3346;--accent:#7d96ff;
+    --ok:#5fd48a;--okbg:#12341f;--warn:#e6b24a;--warnbg:#3a2e10;--hi:#ff8790;--hibg:#3a1620;
+    --add:#5fd48a;--addbg:#0f2a1a;--del:#ff8790;--delbg:#331319;--hunk:#a892f5;}}
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;margin:0;padding:1.5rem 1rem}
+  .wrap{max-width:1000px;margin:0 auto}
+  header h1{margin:0 0 .2rem;font-size:1.6rem} header .sub{color:var(--muted);margin:0 0 1.2rem}
+  .pill{display:inline-block;padding:.08rem .5rem;border-radius:999px;font-size:.8rem;font-weight:600}
+  .pill.ok{color:var(--ok);background:var(--okbg)} .pill.warn{color:var(--warn);background:var(--warnbg)} .pill.hi{color:var(--hi);background:var(--hibg)}
+  .tabs input{position:absolute;opacity:0;pointer-events:none}
+  .tabbar{display:flex;flex-wrap:wrap;gap:.3rem;border-bottom:2px solid var(--line);margin-bottom:1rem}
+  .tabbar label{padding:.5rem .8rem;cursor:pointer;border-radius:8px 8px 0 0;color:var(--muted);font-weight:600;font-size:.92rem;border:1px solid transparent;border-bottom:none}
+  .panel{display:none;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1.2rem 1.3rem}
+  /* Ordinal-slot activation (up to 12 tabs) — generator just emits inputs/labels/panels in order. */
+  #t0:checked ~ .tabbar label:nth-of-type(1),#t1:checked ~ .tabbar label:nth-of-type(2),#t2:checked ~ .tabbar label:nth-of-type(3),#t3:checked ~ .tabbar label:nth-of-type(4),#t4:checked ~ .tabbar label:nth-of-type(5),#t5:checked ~ .tabbar label:nth-of-type(6),#t6:checked ~ .tabbar label:nth-of-type(7),#t7:checked ~ .tabbar label:nth-of-type(8),#t8:checked ~ .tabbar label:nth-of-type(9),#t9:checked ~ .tabbar label:nth-of-type(10),#t10:checked ~ .tabbar label:nth-of-type(11),#t11:checked ~ .tabbar label:nth-of-type(12){color:var(--ink);background:var(--card);border-color:var(--line)}
+  #t0:checked ~ .panel:nth-of-type(1),#t1:checked ~ .panel:nth-of-type(2),#t2:checked ~ .panel:nth-of-type(3),#t3:checked ~ .panel:nth-of-type(4),#t4:checked ~ .panel:nth-of-type(5),#t5:checked ~ .panel:nth-of-type(6),#t6:checked ~ .panel:nth-of-type(7),#t7:checked ~ .panel:nth-of-type(8),#t8:checked ~ .panel:nth-of-type(9),#t9:checked ~ .panel:nth-of-type(10),#t10:checked ~ .panel:nth-of-type(11),#t11:checked ~ .panel:nth-of-type(12){display:block}
+  h2{font-size:1.15rem;margin:.2rem 0 .8rem} h3{font-size:.85rem;margin:1.1rem 0 .4rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  a{color:var(--accent)} code{background:var(--bg);border:1px solid var(--line);padding:.05rem .35rem;border-radius:5px;font-size:.88em}
+  .recap{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.2rem 0 .6rem}
+  .kv{margin:.15rem 0}.kv b{color:var(--muted);font-weight:600;display:inline-block;min-width:6rem}
+  ol.tests{margin:.3rem 0;padding-left:1.2rem} ol.tests li{margin:.35rem 0}
+  .commit{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85rem}
+  .actions{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:.6rem .8rem;margin:.5rem 0}
+  pre.diff{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:.7rem .9rem;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;line-height:1.4;margin:.3rem 0}
+  pre.diff .add{color:var(--add);background:var(--addbg);display:block} pre.diff .del{color:var(--del);background:var(--delbg);display:block}
+  pre.diff .hunk{color:var(--hunk);display:block} pre.diff .meta{color:var(--muted);display:block}
+  table{border-collapse:collapse;width:100%;margin:.4rem 0} th,td{border:1px solid var(--line);padding:.4rem .6rem;text-align:left;font-size:.9rem}
+  footer{color:var(--muted);font-size:.85rem;margin-top:1.5rem;border-top:1px solid var(--line);padding-top:.8rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Nightly digest — {{DATE}}</h1>
+  <p class="sub">{{N_EPICS}} epics · <span class="pill ok">{{N_READY}} ready to OK</span> · <span class="pill warn">{{N_ATTENTION}} need attention</span> · {{TOKENS_SPENT}}/{{BUDGET}} tokens · staging: {{DEPLOY_STATUS}}</p>
+</header>
+
+<div class="tabs">
+  <input type="radio" name="tab" id="t0" checked>
+  <input type="radio" name="tab" id="t1"><!-- …one <input id="tK"> per epic, in order… -->
+
+  <nav class="tabbar">
+    <label for="t0">Overview</label>
+    <label for="t1">{{EPIC_ID}} <span class="pill {{RISK_CLASS}}">{{RISK}}</span></label>
+    <!-- …one <label for="tK"> per epic, same order… -->
+  </nav>
+
+  <!-- ===== slot 1: OVERVIEW ===== -->
+  <section class="panel">
+    <h2>What happened overnight</h2>
+    <p>{{RUN_ONE_LINER}} — your single point of contact: review each epic's tab, then act <b>on its PR</b>.</p>
+    <div class="actions"><b>How to act</b> (per PR, never bulk): comment <code>/orch approve</code> to accept, or
+      <code>/orch revise: &lt;notes&gt;</code> to send it back for tonight's rework. High-risk epics need a
+      <code>security-auditor</code> pass before they're OK-eligible (flagged on their tab).</div>
+    <h3>Cross-epic consistency</h3><p>{{CONSISTENCY_VERDICT_AND_EVIDENCE}}</p>
+    <h3>Deploy</h3><p>{{DEPLOY_DETAIL}}</p>
+    <h3>Deferred / paused</h3><p>{{DEFERRED_AND_PAUSED}}</p>
+  </section>
+
+  <!-- ===== slot 2..N: ONE PANEL PER EPIC (repeat this <section>, same order as inputs/labels) ===== -->
+  <section class="panel">
+    <h2>{{EPIC_ID}} — {{EPIC_TITLE}}</h2>
+    <div class="recap"><span class="pill {{STATE_CLASS}}">{{STATE}}</span><span class="pill {{RISK_CLASS}}">risk: {{RISK}}</span></div>
+    <p>{{WHAT_AND_WHY}}</p>
+    <div class="kv"><b>Ticket</b> <a href="{{TICKET_URL}}">{{TICKET_LABEL}}</a></div><!-- remote board only; drop on `none` -->
+
+    <h3>Review &amp; act</h3>
+    <div class="kv"><b>PR</b> <a href="{{PR_URL}}">#{{PR}} — {{PR_TITLE}}</a></div>
+    <div class="kv"><b>Commit</b> <span class="commit"><a href="{{COMMIT_URL}}">{{COMMIT_SHA}}</a> {{COMMIT_MSG}}</span></div><!-- expect ONE commit/epic -->
+    <div class="actions">On this PR: <code>/orch approve</code> to accept · <code>/orch revise: &lt;notes&gt;</code> to rework. {{RISK_GATE_NOTE}}</div>
+
+    <h3>What to test</h3>
+    <ol class="tests">
+      <li>{{CHECK}} → expect: {{EXPECTED}} — <a href="{{STAGING_ROUTE}}">{{STAGING_ROUTE}}</a></li>
+      <!-- …one per acceptance check; add cross-epic interaction checks for overlaps… -->
+    </ol>
+
+    <h3>Gates</h3>
+    <table><tr><th>Tests</th><th>Lint/typecheck</th><th>Build</th><th>Self-review</th></tr>
+      <tr><td>{{TESTS}}</td><td>{{LINT}}</td><td>{{BUILD}}</td><td>{{SELF_REVIEW}}</td></tr></table>
+
+    <h3>Changes ({{FILES_CHANGED}} files, +{{ADDED}}/-{{REMOVED}})</h3>
+    <pre class="diff"><!-- HTML-escaped `git diff <base>..orch/<id>`; wrap each line:
+      <span class="hunk">@@…@@</span>, <span class="meta">diff --git / +++ / ---</span>,
+      <span class="add">+…</span>, <span class="del">-…</span>, plain lines as-is. For a large
+      diff include the first ~200 lines and point to the PR for the rest. -->{{DIFF_HTML}}</pre>
+  </section>
+  <!-- ===== end per-EPIC panel ===== -->
+</div>
+
+<footer>Generated {{DATE}} · cost {{TOKENS_SPENT}}/{{BUDGET}} tokens · <b>OK is per-PR, never bulk</b>.
+  Feedback is read from the code host at the next <code>/orchestrator:kickoff</code> (state ≠ feedback, ADR-0007).</footer>
+</div>
+</body>
+</html>

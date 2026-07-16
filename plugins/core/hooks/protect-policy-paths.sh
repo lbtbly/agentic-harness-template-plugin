@@ -1,5 +1,5 @@
 #!/bin/bash
-# POLICY file-edit guardrails (template-core plugin, opt-in, default ON):
+# POLICY file-edit guardrails (core plugin, opt-in, default ON):
 # CI workflows, generated lockfiles, plugin/marketplace manifests, accepted
 # ADRs — team conventions, not security boundaries. The SECURITY half
 # (settings*.json self-elevation) lives in protect-paths.sh (CORE).

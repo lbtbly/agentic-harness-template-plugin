@@ -1,0 +1,21 @@
+{
+  "$comment": "SCAFFOLDED into a project by /core:new-project. This file carries only what a plugin CANNOT provide: permission boundaries, plan-mode default, MCP gating, and the status line. HOOKS are NOT listed here — they come from the installed plugins' own hooks.json (core, formatting, …). Never hand-edit permissions to widen them (protect-paths blocks it). Personal overrides: settings.local.json.",
+  "permissions": {
+    "defaultMode": "plan",
+    "disableBypassPermissionsMode": "disable",
+    "deny": [
+      "Read(./.env)", "Read(./.env.local)", "Read(./.env.development)",
+      "Read(./.env.production)", "Read(./.env.staging)", "Read(./.env.test)",
+      "Read(**/*.pem)", "Read(**/*.key)", "Read(**/secrets/**)",
+      "Edit(./.env)", "Edit(./.env.local)", "Edit(./.env.development)",
+      "Edit(./.env.production)", "Edit(./.env.staging)", "Edit(./.env.test)",
+      "Bash(cat .env)", "Bash(cat ./.env)"
+    ],
+    "allow": [
+      "Read(./.env.example)",
+      "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(ls:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": false,
+  "statusLine": { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/.claude/statusline.sh\"", "padding": 0 }
+}

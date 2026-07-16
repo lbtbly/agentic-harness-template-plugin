@@ -1,0 +1,7 @@
+{
+  "name": "formatting",
+  "description": "Format-on-edit hook: runs the project's formatter/linter after every Edit/Write, turning failures into remediation prompts.",
+  "version": "1.0.0",
+  "author": { "name": "lambertbouley" },
+  "license": "MIT"
+}

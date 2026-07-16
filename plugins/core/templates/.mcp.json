@@ -1,0 +1,9 @@
+{
+  "$comment": "Project MCP servers. ABSOLUTE RULE: never a plaintext secret here — only ${VAR} expansion from the environment. enableAllProjectMcpServers=false in settings.json: every server requires explicit per-user approval. Start with 3-4 servers max — each one costs context. Do NOT add a filesystem server (Claude Code already has native file tools). Community shortlist + rationale: docs/TOOLING.md.",
+  "mcpServers": {},
+  "$examples_move_one_into_mcpServers_to_enable": {
+    "context7": { "type": "http", "url": "https://mcp.context7.com/mcp" },
+    "github": { "type": "http", "url": "https://api.githubcopilot.com/mcp/", "headers": { "Authorization": "Bearer ${GITHUB_TOKEN}" } },
+    "playwright": { "command": "npx", "args": ["-y", "@playwright/mcp@latest"] }
+  }
+}

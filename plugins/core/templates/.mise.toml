@@ -1,0 +1,16 @@
+# Runtime toolchain pinning — copied to .mise.toml by /core:new-project (opt-in).
+# `mise` (https://mise.jdx.dev) pins language versions per project, installs them
+# on `mise install`, and keeps them isolated — handy for worktrees & sandboxes.
+# Uncomment the tools your stack uses; delete the rest. `mise trust` on first use.
+
+[tools]
+# node = "22"
+# python = "3.12"
+# go = "1.23"
+# rust = "1.83"
+
+[env]
+# _.file = ".env"   # optional: load env vars (never commit secrets)
+
+# [tasks.test]
+# run = "echo 'wire your test command here'"

@@ -1,0 +1,12 @@
+{
+  "$comment": "Copied to .devcontainer/ by /core:new-project (opt-in). Isolated container for higher-autonomy / untrusted-code runs. Pairs with init-firewall.sh (default-deny egress). Adjust the image to your stack (or use a mise base + `mise install`).",
+  "name": "project-devcontainer",
+  "image": "mcr.microsoft.com/devcontainers/base:debian",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],
+  "postCreateCommand": "bash .devcontainer/init-firewall.sh",
+  "remoteUser": "vscode"
+}

@@ -1,0 +1,98 @@
+# Nightly orchestrator — GitHub Actions runtime (ADR-0008).
+# Installed by /orchestrator:enable-orchestrator as .github/workflows/nightly-orchestrator.yml.
+# Three schedules: the build kick, a retry lane (no-ops unless it just restored
+# an expired usage-limit pause — WS5), and the morning digest delivery.
+# Egress firewall is MANDATORY and fail-closed (audit SEC-C1): the container
+# gets NET_ADMIN and the firewall step must succeed before claude runs.
+name: nightly-orchestrator
+on:
+  schedule:
+    - cron: '30 12 * * *'    # build kick (UTC) — after your morning kickoff; adjust at enable time
+    - cron: '0 */2 * * *'    # retry lane: resumes ONLY after a usage-limit pause expired
+    - cron: '15 8 * * *'     # digest delivery — deliver_at from notify.config.json; adjust at enable time
+  workflow_dispatch: {}      # protect with an environment approval rule (audit SEC-M3)
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: nightly-orchestrator
+  cancel-in-progress: false   # never kill a run mid-integration
+
+jobs:
+  phase-b:
+    # build kick + retry lane, but NOT the delivery cron
+    if: github.event.schedule != '15 8 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    # SANDBOX REQUIRED: NET_ADMIN for the default-deny egress firewall
+    container:
+      image: mcr.microsoft.com/devcontainers/base:debian
+      options: --cap-add=NET_ADMIN --cap-add=NET_RAW
+    env:
+      # AUTH — pick ONE lane (set only one of these repo secrets):
+      #  subscription (preferred, no metered billing): CLAUDE_CODE_OAUTH_TOKEN from
+      #    `claude setup-token` (~1-year token). NEVER add --bare to the claude -p
+      #    call on this lane — --bare skips OAuth reads entirely (DEVIATIONS §4).
+      #  metered: ANTHROPIC_API_KEY. Note it takes precedence over the subscription
+      #    token, so leave it unset on the subscription lane.
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GH_TOKEN: ${{ secrets.ORCH_APP_TOKEN }}   # short-lived GitHub App token, not a PAT
+      ORCH_MAX_EPICS: '4'
+      ORCH_BUDGET_TOKENS: '2000000'             # hard per-night cap (audit L-I1) — tune at enable time
+      ORCH_LANE: ${{ github.event.schedule == '0 */2 * * *' && 'retry' || 'nightly' }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Install claude + jq + iptables
+        run: npm install -g @anthropic-ai/claude-code && apt-get update -qq && apt-get install -yqq jq iptables curl
+      - name: Fetch the orchestrator plugin (the nightly workflow lives in it, not the repo)
+        # The orchestrator plugin is not part of the project checkout. Clone
+        # the marketplace repo shallowly and expose the plugin dir to run-with-limits.sh,
+        # which passes it to `claude -p --plugin-dir`. Adjust the URL/ref at enable time.
+        run: git clone --depth 1 https://github.com/your-org/agentic-harness-template-plugin "$RUNNER_TEMP/tmpl"
+      - name: Egress firewall — MUST succeed (fail-closed)
+        run: bash .devcontainer/init-firewall.sh
+      - name: Phase B with usage-limit resilience
+        env:
+          ORCH_PLUGIN_DIR: ${{ runner.temp }}/tmpl/plugins/orchestrator
+          ORCH_CORE_HOOKS: ${{ runner.temp }}/tmpl/plugins/core/hooks
+        run: bash orchestrator/runtime/run-with-limits.sh
+      - name: Persist digests + state to orch/state branch (audit L-B3/L-B4)
+        if: always()
+        run: |
+          git config user.name "orchestrator" && git config user.email "orchestrator@noreply.local"
+          git add -f docs/reports/nightly .orch 2>/dev/null || true
+          git commit -m "orch: state + digest $(date -u +%F)" || exit 0
+          git push origin +HEAD:refs/heads/orch/state
+      - name: Publish digest artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: nightly-digest, path: docs/reports/nightly/, if-no-files-found: ignore }
+
+  deliver-digest:
+    # runs only on the delivery cron — reads the orch/state branch (the runner
+    # checkout where the build wrote the digest is long gone — audit L-B3)
+    if: github.event.schedule == '15 8 * * *'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: nightly-digest          # never queued behind / cancelled by a build run (audit L-I3)
+      cancel-in-progress: false
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      SLACK_CHANNEL: ${{ vars.SLACK_CHANNEL }}
+      SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pull the latest digests from orch/state
+        run: |
+          git fetch origin orch/state || { echo "no orch/state branch yet — nothing to deliver"; exit 0; }
+          git checkout origin/orch/state -- docs/reports/nightly .orch 2>/dev/null || true
+      - name: Install jq
+        run: sudo apt-get update -qq && sudo apt-get install -yqq jq
+      - name: Deliver the morning digest (newest undelivered)
+        run: bash orchestrator/adapters/notify-digest.sh

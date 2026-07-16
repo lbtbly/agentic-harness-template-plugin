@@ -49,7 +49,7 @@ if [ "$LANE" = "retry" ] && [ "$RESUMED" -eq 0 ]; then
 fi
 
 # --- run Phase B (workflow) headless ---
-# The nightly-orchestrator workflow ships in the template-orchestrator PLUGIN,
+# The nightly-orchestrator workflow ships in the orchestrator PLUGIN,
 # not the project. On a CI runner the plugin is not part of the checkout, so the
 # runtime templates fetch it and set ORCH_PLUGIN_DIR to the plugin dir; we pass
 # it via --plugin-dir so `claude -p` can resolve the workflow. (Interactive/local
