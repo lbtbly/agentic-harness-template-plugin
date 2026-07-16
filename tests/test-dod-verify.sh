@@ -56,6 +56,11 @@ check "dod-verify.js exports verifyDoD()" $?
 node --input-type=module -e "import('$(cd "$(dirname "$PIPE")" && pwd)/$(basename "$PIPE")').then(m=>process.exit(new Set(m.LENSES).size>=3?0:1)).catch(()=>process.exit(1))" 2>/dev/null
 check "judge panel has ≥3 distinct lenses" $?
 
+# decorrelated panel: every lens has a pinned judge model and ≥2 distinct models are
+# used across the panel (correlated-judges deviation, docs/DEVIATIONS.md §1)
+node --input-type=module -e "import('$(cd "$(dirname "$PIPE")" && pwd)/$(basename "$PIPE")').then(m=>{const ok=m.LENSES.every(l=>typeof m.JUDGE_MODELS[l]==='string')&&new Set(Object.values(m.JUDGE_MODELS)).size>=2;process.exit(ok?0:1)}).catch(()=>process.exit(1))" 2>/dev/null
+check "judge panel pins ≥2 distinct models across lenses (decorrelation)" $?
+
 echo "---"
 echo "$PASS ok, $FAIL failure(s)"
 [ "$FAIL" -eq 0 ]

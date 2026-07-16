@@ -6,6 +6,9 @@ export const meta = {
 import { aggregateVerdict } from './lib/dod-verdict.js'
 
 export const LENSES = ['correctness', 'pm', 'design']
+// Decorrelated panel: same-model judges fail together (majority ≈ one judge), so each
+// lens is pinned to a model. Keep ≥2 distinct models across the panel when tuning.
+export const JUDGE_MODELS = { correctness: 'opus', pm: 'sonnet', design: 'opus' }
 export const JUDGE_SCHEMA = {
   type: 'object', additionalProperties: false,
   required: ['verdict', 'blocking', 'note'],
@@ -59,7 +62,7 @@ export async function verifyDoD(epic) {
               : lens === 'pm' ? 'does it deliver the acceptanceCriteria value the initiative intended'
               : 'does the UI match the design references and behave well'}.
        Default to reject if uncertain. Set blocking:true only for a defect serious enough to forbid merge.`,
-      { label: `dod:judge:${lens}:${epic}`, phase: 'Verify', schema: JUDGE_SCHEMA })
+      { label: `dod:judge:${lens}:${epic}`, phase: 'Verify', schema: JUDGE_SCHEMA, model: JUDGE_MODELS[lens] })
       .then(v => ({ lens, ...v }))
   ))).filter(Boolean)
 
