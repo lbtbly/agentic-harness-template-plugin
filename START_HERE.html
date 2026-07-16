@@ -159,6 +159,40 @@
     .g2,.g3{grid-template-columns:1fr}
   }
 
+  /* ---- the map: flow schemas ---- */
+  .schema-wrap{border:1px solid var(--line);border-radius:var(--radius);background:var(--bg2);
+    margin:18px 0;overflow:hidden;display:flex;flex-direction:column}
+  .schema-head{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .schema-head h3{margin:0;font-size:15px}
+  .schema-head .hint{color:var(--faint);font-size:11.5px;font-family:var(--mono)}
+  .expand-btn{margin-left:auto;flex:0 0 auto;padding:6px 12px;border-radius:8px;cursor:pointer;
+    background:var(--panel2);border:1px solid var(--line2);color:var(--muted);font-size:12px;font-family:var(--mono)}
+  .expand-btn:hover{color:var(--ink);border-color:var(--acc)}
+  .schema-body{overflow:auto;padding:8px 6px}
+  .schema-body svg{display:block;width:100%;height:auto;min-width:980px}
+  .schema-legend{display:flex;flex-wrap:wrap;gap:14px;padding:8px 16px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+  .schema-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;
+    border:1.5px solid;vertical-align:-1px;font-style:normal}
+  .schema-wrap.full{position:fixed;inset:0;z-index:80;border-radius:0;margin:0;background:var(--bg)}
+  .schema-wrap.full .schema-body{flex:1;display:grid;place-items:center;padding:12px}
+  .schema-wrap.full .schema-body svg{min-width:0;width:100%;height:100%;max-height:calc(100vh - 110px)}
+  .schema svg .snode rect{fill:var(--panel);stroke:var(--line2);stroke-width:1.3;transition:.12s}
+  .schema svg a.snode:hover rect{stroke-width:2.4;filter:brightness(1.12)}
+  .schema svg .snode.you rect{stroke:var(--warn)}
+  .schema svg .snode.ai rect{stroke:var(--acc2)}
+  .schema svg .snode.gate rect{stroke:var(--danger)}
+  .schema svg .snode.okn rect{stroke:var(--ok)}
+  .schema svg text{fill:var(--ink);font:600 13px var(--sans)}
+  .schema svg text.sm{fill:var(--muted);font:400 10.5px var(--sans)}
+  .schema svg text.lane{fill:var(--faint);font:700 10px var(--mono);letter-spacing:1.5px}
+  .schema svg text.elbl{fill:var(--faint);font:600 10.5px var(--mono)}
+  .schema svg path.edge{stroke:var(--faint);stroke-width:1.4;fill:none}
+  .schema svg path.edge.loopy{stroke:var(--acc);stroke-dasharray:5 4}
+  .schema svg marker path{fill:var(--faint)}
+  .schema svg marker.mloop path{fill:var(--acc)}
+  .schema svg rect.groupbox{fill:rgba(124,139,255,.03);stroke:var(--line2);stroke-dasharray:6 5}
+
   /* ---- clickable file refs + slide-in file viewer ---- */
   [data-file],[data-dir]{cursor:pointer}
   code[data-file],code[data-dir]{border-bottom:1px dashed var(--acc2)}
@@ -216,6 +250,7 @@
     <div><b>The Overnight Harness</b><span>start here</span></div>
   </div>
   <div class="grp">Orientation</div>
+  <a class="nl" href="#map">The map — what happens when</a>
   <a class="nl" href="#overview">Overview &amp; laws</a>
   <a class="nl" href="#failures">Four failure modes</a>
   <a class="nl" href="#setup">Install the plugins</a>
@@ -251,6 +286,109 @@
     <span class="badge">💳 subscription-friendly (no API key required)</span>
   </div>
   <div class="principle-line">The load-bearing idea: <b>an agent must never be the judge of its own completion.</b> "Done" is an external, machine-checkable contract — get that wrong and the run either quits early or never stops. Everything here serves that one truth.</div>
+</section>
+
+<section id="map">
+  <div class="eyebrow">The map</div>
+  <h2>What happens when — both flavors, one page</h2>
+  <p class="lead">Every box is clickable and jumps to the section explaining it in depth (and from there, to the files that gate it). <b>⛶ expand</b> for full screen. Amber = a human moment; teal = the machine; red = a safety/risk gate; green = the happy exit.</p>
+
+  <div class="schema-wrap schema" id="schemaA">
+    <div class="schema-head"><h3><span class="pill p-gated">gated</span> Flavor 1 — Scheduled nightly · the daily cycle (recommended default)</h3><span class="hint">click a node → its section</span><button class="expand-btn" type="button">⛶ expand</button></div>
+    <div class="schema-body">
+    <svg viewBox="0 0 1240 480" role="img" aria-label="Gated nightly daily cycle">
+      <defs><marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker>
+      <marker id="arrAL" class="mloop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs>
+
+      <text class="lane" x="20" y="42">YOU · MORNING ~09:00</text>
+      <a class="snode you" href="#report"><g transform="translate(20,55)"><rect width="200" height="58" rx="10"/><text x="14" y="24">📬 Digest arrives</text><text x="14" y="42" class="sm">Slack/email · docs/reports/nightly</text></g></a>
+      <a class="snode you" href="#board"><g transform="translate(260,55)"><rect width="250" height="58" rx="10"/><text x="14" y="24">🧪 Test on staging — per PR:</text><text x="14" y="42" class="sm">/orch approve · /orch revise: &lt;notes&gt;</text></g></a>
+
+      <text class="lane" x="20" y="152">YOU · KICKOFF ~11:00 · INTERACTIVE (~15 MIN)</text>
+      <a class="snode you" href="#flavors"><g transform="translate(20,165)"><rect width="200" height="58" rx="10"/><text x="14" y="24">▶ /orchestrator:kickoff</text><text x="14" y="42" class="sm">reads your forge signals</text></g></a>
+      <a class="snode gate" href="#safety"><g transform="translate(260,165)"><rect width="250" height="58" rx="10"/><text x="14" y="24">⚖ Risk gate → merge OK'd + green</text><text x="14" y="42" class="sm">one at a time · red merge auto-reverts</text></g></a>
+      <a class="snode ai" href="#board"><g transform="translate(550,165)"><rect width="220" height="58" rx="10"/><text x="14" y="24">↩ Revise'd → rework queue</text><text x="14" y="42" class="sm">state: Changes-requested</text></g></a>
+      <a class="snode you" href="#loop"><g transform="translate(810,165)"><rect width="210" height="58" rx="10"/><text x="14" y="24">🧑 Plan gate — YOU approve</text><text x="14" y="42" class="sm">nothing builds without a plan</text></g></a>
+      <a class="snode ai" href="#concurrency"><g transform="translate(1055,165)"><rect width="165" height="58" rx="10"/><text x="14" y="24">✂ Partition &amp; detach</text><text x="14" y="42" class="sm">footprint waves</text></g></a>
+
+      <text class="lane" x="20" y="262">THE MACHINE · DAY + NIGHT · SCHEDULED, SANDBOXED</text>
+      <a class="snode ai" href="#flavors"><g transform="translate(20,275)"><rect width="200" height="58" rx="10"/><text x="14" y="24">⏰ Scheduled build fires</text><text x="14" y="42" class="sm">routines / Actions / GitLab · no command</text></g></a>
+      <rect class="groupbox" x="252" y="266" width="770" height="80" rx="12"/>
+      <a class="snode ai" href="#state"><g transform="translate(262,282)"><rect width="86" height="46" rx="8"/><text x="43" y="20" text-anchor="middle" style="font-size:11px">Reconcile</text><text x="43" y="36" text-anchor="middle" class="sm" style="font-size:9.5px">git+forge truth</text></g></a>
+      <a class="snode ai" href="#concurrency"><g transform="translate(356,282)"><rect width="86" height="46" rx="8"/><text x="43" y="20" text-anchor="middle" style="font-size:11px">Build ×N</text><text x="43" y="36" text-anchor="middle" class="sm" style="font-size:9.5px">worktrees</text></g></a>
+      <a class="snode gate" href="#guards"><g transform="translate(450,282)"><rect width="86" height="46" rx="8"/><text x="43" y="20" text-anchor="middle" style="font-size:11px">Blocked?</text><text x="43" y="36" text-anchor="middle" class="sm" style="font-size:9.5px">3 nights → esc.</text></g></a>
+      <a class="snode ai" href="#concurrency"><g transform="translate(544,282)"><rect width="86" height="46" rx="8"/><text x="43" y="20" text-anchor="middle" style="font-size:11px">Integrate</text><text x="43" y="36" text-anchor="middle" class="sm" style="font-size:9.5px">serial queue</text></g></a>
+      <a class="snode ai" href="#agents"><g transform="translate(638,282)"><rect width="86" height="46" rx="8"/><text x="43" y="20" text-anchor="middle" style="font-size:11px">Consistency</text><text x="43" y="36" text-anchor="middle" class="sm" style="font-size:9.5px">overlaps only</text></g></a>
+      <a class="snode ai" href="#flavors"><g transform="translate(732,282)"><rect width="86" height="46" rx="8"/><text x="43" y="20" text-anchor="middle" style="font-size:11px">Deploy</text><text x="43" y="36" text-anchor="middle" class="sm" style="font-size:9.5px">→ staging</text></g></a>
+      <a class="snode ai" href="#verified"><g transform="translate(826,282)"><rect width="86" height="46" rx="8"/><text x="43" y="20" text-anchor="middle" style="font-size:11px">Gardening</text><text x="43" y="36" text-anchor="middle" class="sm" style="font-size:9.5px">entropy control</text></g></a>
+      <a class="snode okn" href="#report"><g transform="translate(920,282)"><rect width="92" height="46" rx="8"/><text x="46" y="20" text-anchor="middle" style="font-size:11px">Digest ✍</text><text x="46" y="36" text-anchor="middle" class="sm" style="font-size:9.5px">immutable daily</text></g></a>
+      <a class="snode gate" href="#guards"><g transform="translate(1055,275)"><rect width="165" height="58" rx="10"/><text x="14" y="24">⏸ Usage limit?</text><text x="14" y="42" class="sm">pause → retry lane resumes</text></g></a>
+
+      <path class="edge" d="M220 84 H254" marker-end="url(#arrA)"/>
+      <path class="edge" d="M385 113 V140 H120 V159" marker-end="url(#arrA)"/>
+      <path class="edge" d="M220 194 H254" marker-end="url(#arrA)"/>
+      <path class="edge" d="M510 194 H544" marker-end="url(#arrA)"/>
+      <path class="edge" d="M770 194 H804" marker-end="url(#arrA)"/>
+      <path class="edge" d="M1020 194 H1049" marker-end="url(#arrA)"/>
+      <path class="edge" d="M1137 223 V248 H120 V269" marker-end="url(#arrA)"/>
+      <path class="edge" d="M220 304 H246" marker-end="url(#arrA)"/>
+      <path class="edge" d="M1022 304 H1049" marker-end="url(#arrA)"/>
+      <path class="edge loopy" d="M1137 333 V430 H8 V84 H13" marker-end="url(#arrAL)"/>
+      <text class="elbl" x="560" y="445">tomorrow — back to the top · reconcile-from-reality makes a skipped day safe</text>
+    </svg>
+    </div>
+    <div class="schema-legend"><span><i style="border-color:var(--warn)"></i>you / human gate</span><span><i style="border-color:var(--acc2)"></i>the machine</span><span><i style="border-color:var(--danger)"></i>safety · risk gate</span><span><i style="border-color:var(--ok)"></i>merge / exit</span><span>▶ trigger: you, each morning · ⏰ trigger: the schedule</span></div>
+  </div>
+
+  <div class="schema-wrap schema" id="schemaB">
+    <div class="schema-head"><h3><span class="pill p-auto">auto</span> Flavor 2 — Run-to-completion · <code>/orchestrator:run</code></h3><span class="hint">click a node → its section</span><button class="expand-btn" type="button">⛶ expand</button></div>
+    <div class="schema-body">
+    <svg viewBox="0 0 1240 640" role="img" aria-label="Run-to-completion loop">
+      <defs><marker id="arrB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker>
+      <marker id="arrBL" class="mloop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs>
+
+      <text class="lane" x="20" y="42">LAUNCH · YOU AT THE KEYBOARD, ONCE</text>
+      <a class="snode you" href="#loop"><g transform="translate(20,55)"><rect width="230" height="58" rx="10"/><text x="14" y="24">▶ Pick scope · confirm epic names</text><text x="14" y="42" class="sm">scope-at-launch gate — explicit yes</text></g></a>
+      <a class="snode ai" href="#state"><g transform="translate(290,55)"><rect width="210" height="58" rx="10"/><text x="14" y="24">↺ Fold prior feedback</text><text x="14" y="42" class="sm">pull-feedback · forge signals only</text></g></a>
+      <a class="snode gate" href="#dod"><g transform="translate(540,55)"><rect width="330" height="58" rx="10"/><text x="14" y="24">🧑‍⚖️ Plan gate: planner → validate-dod → reviewer</text><text x="14" y="42" class="sm">READY required — the author never grades its own DoD</text></g></a>
+
+      <rect class="groupbox" x="20" y="150" width="1200" height="350" rx="14"/>
+      <text class="lane" x="36" y="174">THE OUTER LOOP — UNTIL THE SCOPE IS DRAINED OR A GUARD TRIPS</text>
+
+      <a class="snode ai" href="#concurrency"><g transform="translate(40,190)"><rect width="190" height="58" rx="10"/><text x="14" y="24">✂ Wave partition</text><text x="14" y="42" class="sm">disjoint footprints run together</text></g></a>
+      <a class="snode ai" href="#concurrency"><g transform="translate(270,190)"><rect width="230" height="58" rx="10"/><text x="14" y="24">⛏ Build workers ×N</text><text x="14" y="42" class="sm">1 worktree/epic · cap · model by complexity</text></g></a>
+      <a class="snode ai" href="#dod"><g transform="translate(540,190)"><rect width="330" height="58" rx="10"/><text x="14" y="24">🔬 verifyDoD — four stages</text><text x="14" y="42" class="sm">tests → browser E2E → acceptance → judge panel</text></g></a>
+      <a class="snode gate" href="#dod"><g transform="translate(910,190)"><rect width="120" height="58" rx="10"/><text x="60" y="28" text-anchor="middle">done?</text><text x="60" y="44" text-anchor="middle" class="sm">the verdict decides</text></g></a>
+      <a class="snode gate" href="#safety"><g transform="translate(1070,190)"><rect width="150" height="58" rx="10"/><text x="14" y="24">⚖ Compute risk</text><text x="14" y="42" class="sm">real diff · unknown ⇒ high</text></g></a>
+
+      <a class="snode gate" href="#guards"><g transform="translate(270,310)"><rect width="230" height="58" rx="10"/><text x="14" y="24">🔁 Improve round ++</text><text x="14" y="42" class="sm">K rounds no progress → Blocked + escalate</text></g></a>
+      <a class="snode okn" href="#safety"><g transform="translate(780,310)"><rect width="300" height="58" rx="10"/><text x="14" y="24">✅ LOW → auto-merge</text><text x="14" y="42" class="sm">suite re-runs on main · red auto-reverts</text></g></a>
+      <a class="snode gate" href="#board"><g transform="translate(780,400)"><rect width="300" height="58" rx="10"/><text x="14" y="24">🚩 MED/HIGH or dissent → ESCALATE</text><text x="14" y="42" class="sm">PR waits for /orch approve · CODEOWNERS on high</text></g></a>
+      <a class="snode gate" href="#guards"><g transform="translate(40,400)"><rect width="440" height="58" rx="10"/><text x="14" y="24">🛡 Every cycle: safety · wallclock · budget · thrash</text><text x="14" y="42" class="sm">usage throttle: slow → pause → auto-resume on reset</text></g></a>
+
+      <text class="lane" x="20" y="537">EXIT</text>
+      <a class="snode okn" href="#report"><g transform="translate(540,550)"><rect width="380" height="58" rx="10"/><text x="14" y="24">🏁 Terminate — scope drained or guard tripped</text><text x="14" y="42" class="sm">clean checkpoint · morning digest + run summary</text></g></a>
+
+      <path class="edge" d="M250 84 H284" marker-end="url(#arrB)"/>
+      <path class="edge" d="M500 84 H534" marker-end="url(#arrB)"/>
+      <path class="edge" d="M705 113 V132 H135 V184" marker-end="url(#arrB)"/>
+      <path class="edge" d="M230 219 H264" marker-end="url(#arrB)"/>
+      <path class="edge" d="M500 219 H534" marker-end="url(#arrB)"/>
+      <path class="edge" d="M870 219 H904" marker-end="url(#arrB)"/>
+      <path class="edge" d="M1030 219 H1064" marker-end="url(#arrB)"/><text class="elbl" x="1036" y="212">yes</text>
+      <path class="edge" d="M970 248 V339 H506" marker-end="url(#arrB)"/><text class="elbl" x="948" y="290">no</text>
+      <path class="edge loopy" d="M385 310 V254" marker-end="url(#arrBL)"/><text class="elbl" x="300" y="285">rebuild → re-verify</text>
+      <path class="edge" d="M1145 248 V280 H930 V304" marker-end="url(#arrB)"/><text class="elbl" x="1155" y="272">low</text>
+      <path class="edge" d="M1145 248 V429 H1086" marker-end="url(#arrB)"/><text class="elbl" x="1152" y="345">med/high</text>
+      <path class="edge loopy" d="M780 339 H135 V254" marker-end="url(#arrBL)"/><text class="elbl" x="420" y="332">next epic — serial merge queue</text>
+      <path class="edge" d="M930 458 V544" marker-end="url(#arrB)"/>
+      <path class="edge" d="M260 458 V579 H534" marker-end="url(#arrB)"/><text class="elbl" x="285" y="530">guard trip → checkpoint</text>
+    </svg>
+    </div>
+    <div class="schema-legend"><span><i style="border-color:var(--warn)"></i>you / human gate</span><span><i style="border-color:var(--acc2)"></i>the machine</span><span><i style="border-color:var(--danger)"></i>safety · risk gate</span><span><i style="border-color:var(--ok)"></i>merge / exit</span><span>▶ trigger: one launch · everything after step 2 is unattended</span></div>
+  </div>
+
+  <div class="callout"><span class="lbl">Same machinery, different gate</span><p>Both flavors share every subsystem — planner, DoD verify, worktree builds, serial merge queue, guards, digest (<a href="#loop">the loop</a>, <a href="#dod">the DoD</a>). The only difference: the gated flavor keeps the <b>per-PR human OK</b> before anything reaches <code>main</code>; run-to-completion replaces it with the <b>risk gate</b> — and only for <span class="pill p-auto">low</span>-risk epics.</p></div>
 </section>
 
 <section id="overview">
@@ -757,7 +895,29 @@ bash tests/run-tests.sh</code></pre>
   });
   document.getElementById('dclose').addEventListener('click', closeDrawer);
   backdrop.addEventListener('click', closeDrawer);
-  addEventListener('keydown', function(e){ if (e.key === 'Escape') closeDrawer(); });
+
+  /* ---- schema fullscreen ---- */
+  function fullSchema(){ return document.querySelector('.schema-wrap.full'); }
+  function closeSchema(w){ w.classList.remove('full'); w.querySelector('.expand-btn').textContent = '⛶ expand'; document.body.style.overflow=''; }
+  document.querySelectorAll('.schema-wrap .expand-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var w = btn.closest('.schema-wrap');
+      if (w.classList.contains('full')) { closeSchema(w); return; }
+      var other = fullSchema(); if (other) closeSchema(other);
+      w.classList.add('full'); btn.textContent = '✕ close (Esc)';
+      document.body.style.overflow = 'hidden';
+    });
+  });
+  /* clicking a node link inside a fullscreen schema closes it, then navigates */
+  document.querySelectorAll('.schema-wrap a.snode, .schema-wrap .callout a').forEach(function(a){
+    a.addEventListener('click', function(){ var w = fullSchema(); if (w) closeSchema(w); });
+  });
+  addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    var w = fullSchema();
+    if (w) { closeSchema(w); return; }
+    closeDrawer();
+  });
 
   /* Theme toggle */
   document.getElementById('themeToggle').addEventListener('click',function(){
