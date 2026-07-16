@@ -667,7 +667,27 @@
     <div class="lc done"><div class="st">Approved → Merged</div><p>OK'd + green → lands on main (at kickoff, or auto in run-to-completion).</p><div class="who">🧑 or risk-gate</div></div>
   </div>
   <div class="callout"><span class="lbl">The rework loop is the point</span><p>Needs-review doesn't only flow forward. On a revise — or an integration/consistency failure — the epic drops to Changes-requested, a worker picks it up next run, and it comes back to review. It circles until you approve it (gated) or the DoD + risk gate clear it (auto). States are backend-agnostic; signals still come from the forge, never the board.</p></div>
-  <div class="callout"><span class="lbl">Bring your own board</span><p>At <code>/core:new-project</code>, a Notion/Jira backend asks: <b>create a new board from the template</b>, or <b>adopt an existing one</b> (paste its URL). Adopted boards are never trusted as-is: <code>/core:board-setup</code> audits them against the contract — the 12 lifecycle states in order, the required properties (<code>Assigned to</code> for the worker on the card, <code>Complexity</code> for model right-sizing, <code>Created</code>/<code>Edited</code> timestamps) — reports every gap, and either fixes them <b>automatically (additive-only: it never deletes or re-types what's already there)</b> or prints a copy-ready guide if you'd rather update it yourself, with a re-audit offered after. The board's cards also carry who's working (<code>--assignee</code>, cleared on hand-off) and the planner's complexity estimate. <b>Jira caveat:</b> the connector cannot create projects, so Jira always starts from a URL you provide — and the skill then asks whether that project is <i>freshly created for this</i> (full adaptation: the 12 statuses, columns in lifecycle order, issue type) or <i>an existing project with real work</i> (its schema is never touched; the harness coexists via <code>orch-state-*</code> labels + quick filters).</p></div>
+  <h3 style="margin:26px 0 4px;font-size:18px">Bring your own board</h3>
+  <p class="lead" style="margin-bottom:12px">A Notion or Jira backend starts with one question at <code>/core:new-project</code> — then <code data-file="plugins/core/skills/board-setup/SKILL.md">/core:board-setup</code> does the rest:</p>
+  <div class="grid g2">
+    <div class="card"><h3><span class="ic">🆕</span>Create from the template</h3>
+      <p><b>Notion</b> — the database is created for you (MCP connector, no credentials): 12 lifecycle states in order, grouped board view, all properties.<br>
+      <b>Jira</b> — the connector <i>cannot create projects</i>: you create one in the UI (30&nbsp;seconds), paste its URL, and the skill adapts it.</p></div>
+    <div class="card"><h3><span class="ic">📋</span>Adopt an existing board</h3>
+      <p>Paste its URL — Notion database link or Jira project link. <b>Never trusted as-is</b>: it goes through the audit below before anything is recorded.</p></div>
+  </div>
+
+  <div class="steps" style="margin-top:10px">
+    <div class="step"><div class="n">01</div><div><h4>Audit against the contract</h4><p>The real schema is read and compared: the 12 states <i>in lifecycle order</i> (columns inherit it), plus the required properties — <code>Assigned to</code> (which worker is on the card, cleared on hand-off), <code>Complexity</code> (drives the model choice), <code>Created</code>/<code>Edited</code> timestamps, PR, Note.</p></div></div>
+    <div class="step"><div class="n">02</div><div><h4>Gap report</h4><p>A compact table: what's missing, what has the wrong type, what's out of order. Nothing is touched yet.</p></div></div>
+    <div class="step"><div class="n">03</div><div><h4>Your call: fix it, or get the recipe</h4><p><span class="pill p-auto">automatic</span> additive-only — adds what's missing, <b>never deletes, renames or re-types</b> anything already there, and shows a before/after. &nbsp;<span class="pill p-you">yourself</span> a copy-ready guide (exact property names, types, option order, where to click) + an offered re-audit when you're done.</p></div></div>
+  </div>
+
+  <div class="grid g2">
+    <div class="card"><h3><span class="ic">🌱</span>Jira: fresh &amp; dedicated</h3><p>Created just for this? Full adaptation: the 12 statuses (project-scoped), board columns in lifecycle order, issue type confirmed. On an MCP-only session (no status tools) you get the exact UI steps instead.</p></div>
+    <div class="card"><h3><span class="ic">🏢</span>Jira: existing, with real work</h3><p>The schema belongs to the team — <b>never modified</b>. The harness coexists via <code>orch-state-*</code> labels + the JSON payload on its own issues only, with quick filters as the board view. Want full adaptation? Make a dedicated project instead.</p></div>
+  </div>
+  <div class="callout ok"><span class="lbl">Degrades safely</span><p>Labels stay authoritative on Jira either way — statuses and columns are only the human mirror. A half-adapted board means a poorer view, never a broken loop.</p></div>
   <div class="fchips"><span class="flabel">driven by</span>
     <span class="fchip" data-file="plugins/core/skills/board-setup/SKILL.md">board-setup/SKILL.md (create · adopt · audit)</span>
     <span class="fchip" data-file="plugins/core/templates/orchestrator/adapters/pm-notion.js">pm-notion.js</span>
