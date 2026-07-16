@@ -80,6 +80,9 @@ plugin and it does **not** park/compose anything — optional capabilities are a
      `cp "$T/orchestrator/state.config.json" orchestrator/state.config.json`.
    - **Keep only the chosen backend's adapter**: `none` → copy no `pm-*.js`;
      `<backend>` → `cp "$T/orchestrator/adapters/pm-<backend>.js" orchestrator/adapters/`.
+   - **jira / notion**: after scaffolding, run `/core:board-setup` — it provisions the
+     board (database/project) with the 12-state epic lifecycle and wires it into
+     `state.config.json`. Mention it in the final summary alongside the plugin installs.
    - `none` → `mkdir -p .orch/{sessions,specs,epics,plans,digest}` + a `.gitkeep` in each;
      gitignore `.orch/cache/`. remote → record the backend in `docs/STACK.md`, add the token
      env var NAME to `.env.example` (never a value), set it in `state.config.json`.
