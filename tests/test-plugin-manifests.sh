@@ -56,7 +56,8 @@ done
 # state.config.json (pull-feedback's source), and CI templates offer the
 # subscription auth lane (ADR-0019)
 jq -e '.permissions.defaultMode == "plan"' "$R/plugins/core/templates/settings.json" >/dev/null 2>&1; check "settings template: defaultMode plan" $?
-jq -e '.disableBypassPermissionsMode == "disable"' "$R/plugins/core/templates/settings.json" >/dev/null 2>&1; check "settings template: disableBypassPermissionsMode present" $?
+jq -e '.permissions.disableBypassPermissionsMode == "disable"' "$R/plugins/core/templates/settings.json" >/dev/null 2>&1; check "settings template: permissions.disableBypassPermissionsMode present (correct path)" $?
+jq -e 'has("disableBypassPermissionsMode") | not' "$R/plugins/core/templates/settings.json" >/dev/null 2>&1; check "settings template: no redundant top-level copy" $?
 grep -q 'state.config.json.*forge\|forge.*state.config.json' "$R/plugins/core/skills/new-project/SKILL.md"; check "new-project records the chosen forge in state.config.json" $?
 grep -q "CLAUDE_CODE_OAUTH_TOKEN" "$R/plugins/ci/skills/setup/SKILL.md"; check "ci setup skill offers the subscription token lane" $?
 grep -q "claude_code_oauth_token" "$R/plugins/ci/templates/github/claude.yml"; check "ci claude.yml supports the subscription token" $?

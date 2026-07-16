@@ -1,5 +1,4 @@
 {
-  "disableBypassPermissionsMode": "disable",
   "$comment": "SCAFFOLDED into a project by /core:new-project. This file carries only what a plugin CANNOT provide: permission boundaries, plan-mode default, MCP gating, and the status line. HOOKS are NOT listed here — they come from the installed plugins' own hooks.json (core, formatting, …). Never hand-edit permissions to widen them (protect-paths blocks it). Personal overrides: settings.local.json.",
   "permissions": {
     "defaultMode": "plan",
