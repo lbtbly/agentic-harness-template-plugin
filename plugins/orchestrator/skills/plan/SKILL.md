@@ -19,7 +19,7 @@ initiative id passed in):
    back to step 1; READY-WITH-FIXES applies the fixes then re-reviews. The reviewer is
    independent of the planner (no self-grading).
 4. **Persist** — `orch state push-epic` each epic (state `Planned`, footprint, deps,
-   riskHints, dodPath, designReview). Nothing is marked `Planned` until validate-dod exits 0
+   riskHints, complexity, dodPath, designReview). Nothing is marked `Planned` until validate-dod exits 0
    AND the design review is not NEEDS-REWORK.
 
 GUARDRAILS: the planner authors from the initiative's INTENT, never bloats acceptance

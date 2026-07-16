@@ -26,6 +26,14 @@ grep -q "orch state health" "$SK"; check "skill verifies with orch state health"
 grep -qi "MCP-first\|MCP connector" "$SK"; check "skill offers the credential-free MCP lane first" $?
 grep -qi "only.*enable-orchestrator\|defer.*token" "$SK"; check "skill defers tokens to unattended-loop enablement" $?
 grep -qi "forge.*never\|never.*board.*feedback\|feedback.*forge" "$SK"; check "skill restates: feedback comes from the forge, never the board" $?
+grep -q "Assigned to" "$SK"; check "board carries an Assigned to property (worker on the card)" $?
+grep -qi "Complexity" "$SK"; check "board carries a Complexity estimate (drives model choice)" $?
+grep -q "created_time" "$SK" && grep -q "last_edited_time" "$SK"; check "board carries Created/Edited timestamps" $?
+grep -qi "option order\|same order as the lifecycle\|column order" "$SK"; check "skill enforces lifecycle column order (not alphabetical)" $?
+grep -q "Assigned to" "$NOTION"; check "pm-notion maps Assigned to" $?
+grep -q "Complexity" "$NOTION"; check "pm-notion maps Complexity" $?
+grep -q "orch-complexity-" "$JIRA"; check "pm-jira labels complexity" $?
+grep -q -- "--assignee" "$R/plugins/core/templates/orchestrator/bin/orch"; check "orch push-status supports --assignee" $?
 
 # --- new-project points remote-board users at the skill ---
 grep -q "board-setup" "$NP"; check "new-project points jira/notion backends at /core:board-setup" $?

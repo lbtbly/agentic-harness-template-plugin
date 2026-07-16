@@ -19,7 +19,11 @@ spec/acceptance notes). Do this:
    - a **footprint**: the glob(s) of files it will touch (drives concurrency/wave
      partitioning — keep epics' footprints as disjoint as possible);
    - **deps**: other epic ids it must follow;
-   - **riskHints**: sensitive paths touched + a rough line estimate.
+   - **riskHints**: sensitive paths touched + a rough line estimate;
+   - **complexity**: `low` · `medium` · `high` — a rough technical-complexity
+     estimate (footprint size, novelty, edge-case density). The orchestrator
+     right-sizes the build model from it, so estimate honestly: `low` = mostly
+     mechanical, `high` = tricky/risky/many edge cases.
 2. **Author the DoD** for each epic as `.orch/epics/<id>/feature_list.json`, valid against
    `.orch/feature-list.schema.json`:
    - `features[]` — user-level E2E `steps` + observable `expected`, `passes:false`;

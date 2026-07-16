@@ -91,5 +91,23 @@ git -C "$TMP" merge -q --no-edit feat/a >/dev/null 2>&1
 git -C "$TMP" merge -q --no-edit feat/b >/dev/null 2>&1; ok "parallel branches merge with zero conflicts (sharded state)" $?
 [ -f "$TMP/.orch/sessions/feat-s-a.json" ] && [ -f "$TMP/.orch/sessions/feat-s-b.json" ]; ok "one session file per branch after merge" $?
 
+# health must DELEGATE to the backend adapter (field-test finding: it used to
+# always report backend:none regardless of config)
+mkdir -p "$TMP/orchestrator/adapters"
+cat > "$TMP/orchestrator/adapters/pm-fake.js" <<'FAKE'
+process.stdout.write(JSON.stringify({ok:true, backend:'fake', op:process.argv[2]}) + '\n');
+FAKE
+printf '{"backend":"fake","forge":"none"}' > "$TMP/orchestrator/state.config.json"
+if command -v node >/dev/null 2>&1; then
+  "$O" state health | jq -e '.backend == "fake"' >/dev/null; ok "health delegates to the backend adapter" $?
+fi
+printf '{"backend":"none","forge":"none"}' > "$TMP/orchestrator/state.config.json"
+
+# push-status --assignee: set and clear on the none backend
+"$O" state push-status --id E-1 --state In-progress --assignee "worker:build-E-1" >/dev/null
+"$O" state get-epic --id E-1 | jq -e '.assignee == "worker:build-E-1"' >/dev/null; ok "push-status --assignee sets the worker on the card" $?
+"$O" state push-status --id E-1 --state Needs-review --assignee - >/dev/null
+"$O" state get-epic --id E-1 | jq -e 'has("assignee") | not' >/dev/null; ok "push-status --assignee - clears it (worker done)" $?
+
 unset CLAUDE_PROJECT_DIR; rm -rf "$TMP"
 summary

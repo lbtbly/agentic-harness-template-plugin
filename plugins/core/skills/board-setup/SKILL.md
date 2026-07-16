@@ -56,10 +56,22 @@ say so plainly and defer the token step until the loop is enabled.
    - Title: `<project> — orchestrator board`
    - Properties: `Name` (title — `[<epicId>] <epic title>`), `State` (select
      with EXACTLY the 12 lifecycle options above, in order), `Epic ID`
-     (rich_text), `PR` (number), `Note` (rich_text), `Updated` (date).
+     (rich_text), `Assigned to` (rich_text — the worker currently on the card:
+     set when a subagent picks it up, cleared with `--assignee -` when it hands
+     off), `Complexity` (select: `low` · `medium` · `high` — the planner's
+     estimate; the orchestrator right-sizes the model from it), `PR` (number),
+     `Note` (rich_text), `Created` (created_time), `Edited` (last_edited_time),
+     `Updated` (date — the adapter's state-change timestamp).
    - The full epic record JSON lives in the page body as a code block — the
      adapter reads/writes it there; properties are the human view.
-2. Group the database view by `State` — that IS the board.
+2. Group the database view by `State` — that IS the board. **Column order must
+   follow the lifecycle, never alphabetical**: board columns mirror the State
+   select's option order, so create the options in EXACTLY the lifecycle order
+   and, after creating, READ the property back and re-PATCH the options array if
+   the order drifted (some clients append alphabetically). The public API does
+   not expose view configuration — if the view still shows alphabetical groups,
+   print the one manual step: open the board view → drag the columns once into
+   lifecycle order (Notion persists it).
 3. Record in `orchestrator/state.config.json`:
    `{ "backend": "notion", "forge": "<existing>", "notion": { "databaseId": "<id>" } }`.
 
@@ -67,7 +79,8 @@ say so plainly and defer the token step until the loop is enabled.
 
 1. Create (or adopt) the project: team-managed Kanban, the asked key.
 2. States: the adapter tracks lifecycle authoritatively as **labels**
-   (`orch-state-<State>`) plus the JSON payload in the issue description — it
+   (`orch-state-<State>`, plus `orch-complexity-<low|medium|high>` when the
+   planner estimated it) and the JSON payload in the issue description — it
    never depends on Jira workflow statuses, because team-managed workflow/status
    creation is not reliably scriptable. For a column-per-state board view,
    either add the 12 statuses manually via Project settings → Board → Columns

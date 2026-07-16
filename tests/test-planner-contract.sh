@@ -36,6 +36,7 @@ assert_cmd_exit 0 "planner-shaped epic record + DoD → validate-dod exit 0" bas
 grep -q "^name: planner" "$PLANNER" 2>/dev/null; check "planner agent frontmatter name" $?
 grep -q "feature_list.json" "$PLANNER" 2>/dev/null; check "planner authors the feature_list DoD" $?
 grep -q "footprint" "$PLANNER" 2>/dev/null; check "planner emits a footprint per epic" $?
+grep -qi "complexity" "$PLANNER" 2>/dev/null; check "planner emits a complexity estimate (model right-sizing)" $?
 grep -qi "never write[s]* product code\|never writes product code" "$PLANNER" 2>/dev/null; check "planner never writes product code" $?
 grep -qi "not self-approve\|never grade.*own\|do not self-approve" "$PLANNER" 2>/dev/null; check "planner never grades its own output" $?
 

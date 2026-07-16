@@ -83,6 +83,8 @@ function epicProps(e) {
     'Epic ID': { rich_text: rt(e.id) },
     ...(e.pr != null ? { PR: { number: Number(e.pr) || null } } : {}),
     ...(e.note ? { Note: { rich_text: rt(String(e.note).slice(0, 1900)) } } : {}),
+    'Assigned to': { rich_text: rt(e.assignee || '') },
+    Complexity: { select: e.complexity ? { name: e.complexity } : null },
     Updated: { date: { start: new Date().toISOString() } },
   };
 }
@@ -175,6 +177,8 @@ async function listEpicRecords() {
       e.state = arg('--state');
       const note = arg('--note'); if (note) e.note = note;
       const pr = arg('--pr'); if (pr) e.pr = Number(pr) || pr;
+      const asg = arg('--assignee');
+      if (asg === '-') delete e.assignee; else if (asg) e.assignee = asg;
       e.ts = new Date().toISOString();
       await upsertEpic(e);
       out({ id, state: e.state });

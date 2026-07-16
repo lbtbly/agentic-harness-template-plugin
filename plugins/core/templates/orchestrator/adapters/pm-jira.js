@@ -106,6 +106,7 @@ async function upsertEpic(e) {
   const { key } = cfg();
   const payload = JSON.stringify(e, null, 2);
   const labels = ['orch-epic', `orch-state-${slug(e.state || 'Backlog')}`];
+  if (e.complexity) labels.push(`orch-complexity-${slug(e.complexity)}`);
   const fields = {
     summary: `[${e.id}] ${e.title || ''}`.trim(),
     description: adfCode(payload, 'json'),
@@ -169,6 +170,8 @@ async function listEpicRecords() {
       e.state = arg('--state');
       const note = arg('--note'); if (note) e.note = note;
       const pr = arg('--pr'); if (pr) e.pr = Number(pr) || pr;
+      const asg = arg('--assignee');
+      if (asg === '-') delete e.assignee; else if (asg) e.assignee = asg;
       e.ts = new Date().toISOString();
       await upsertEpic(e);
       out({ id, state: e.state });

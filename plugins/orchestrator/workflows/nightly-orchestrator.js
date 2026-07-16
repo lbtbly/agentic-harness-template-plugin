@@ -75,8 +75,10 @@ const reconciled = await agent(
       — any epic still In-progress now was left by a crashed/unfinished worker
       (no worker runs while reconcile does). Re-queue each: has a pr/branch →
       rework (fold its last note in); else new work.
-   6. For each epic to build, classify its foreseen "complexity" from the approved
-      plan — so we spend the right model on it (design §Runtime/models):
+   6. For each epic to build, take "complexity" from the epic record's complexity
+      field when the planner recorded one (prefer it — it was reviewed with the
+      plan); only when absent, classify it yourself from the approved plan — so
+      we spend the right model on it (design §Runtime/models):
         low    = small footprint, no risky paths, mostly mechanical
         medium = normal feature work
         high   = large/tricky footprint, touches auth/security/migrations/infra,
@@ -131,7 +133,8 @@ if (planned.length) {
   const workerPrompt = (e, escalated) =>
       `You are the build worker for epic ${e.id} (${e.title ?? ''})${e.rework ? ' — this is REWORK (it came back from a negative review; fold in the revise-notes on the epic record)' : ' — this is new work'}.${escalated ? ' [ESCALATED to Opus after a failed first attempt — be especially careful.]' : ''}
        CONTRACT — build strictly against the approved plan:
-       0. bash ${ORCH} state push-status --id ${e.id} --state In-progress   (a worker is now on it)
+       0. bash ${ORCH} state push-status --id ${e.id} --state In-progress --assignee "worker:${e.id}"
+          (a worker is now on it — the board card shows who; clear it when you hand off)
        1. bash ${ORCH} state get-plan --epic ${e.id}   → the plan. Stay inside it
           and inside your assigned footprint: ${JSON.stringify(e.footprint ?? [])}.
           Files outside the footprint belong to other epics tonight (single-writer
@@ -165,7 +168,7 @@ if (planned.length) {
           morning digest — many WIP commits bury the review. Then open/update the PR
           for orch/${e.id} (gh/glab): body = what changed & why, plan link, test
           evidence. NEVER push to main. NEVER merge.
-       5. bash ${ORCH} state push-status --id ${e.id} --state Needs-review --pr <PR-number>
+       5. bash ${ORCH} state push-status --id ${e.id} --state Needs-review --pr <PR-number> --assignee -
           — the --pr link is MANDATORY when a PR exists (it is the deterministic
           PR↔epic mapping the feedback loop depends on). If you could not finish,
           leave In-progress with a note saying exactly where you stopped.

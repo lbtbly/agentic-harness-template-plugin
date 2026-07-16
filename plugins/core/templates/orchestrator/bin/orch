@@ -33,7 +33,7 @@ usage: orch state <op>
   push-spec --id ID < spec.md                 get-spec --id ID | list-specs
   push-epic < epic.json | push-backlog < []   get-epic --id ID | list-epics [--state S]
   push-plan --epic ID < plan.md               get-plan --epic ID
-  push-status --id ID --state S [--note N] [--pr N]    pull-status
+  push-status --id ID --state S [--note N] [--pr N] [--assignee A|-]    pull-status
   pull-feedback [--pr-state open]             push-digest --date YYYY-MM-DD < digest.html
   push-suggestion --text T [--file F] < []   pull-suggestions | triage-suggestion --id N --decision accepted|rejected [--note N]
   import --from conception/
@@ -128,7 +128,9 @@ pull_feedback() {
 }
 
 # ---------- remote backends: delegate to the node adapter ----------
-if [ "$B" != "none" ] && [ "$OP" != "pull-feedback" ] && [ "$OP" != "health" ]; then
+# every op including health delegates — health must report the REAL backend
+# reachability, not the local skeleton (field-test finding 2026-07-16)
+if [ "$B" != "none" ] && [ "$OP" != "pull-feedback" ]; then
   A="$R/orchestrator/adapters/pm-$B.js"
   [ -f "$A" ] || { echo "unknown backend '$B' (no $A)" >&2; exit 1; }
   command -v node >/dev/null 2>&1 || { echo "backend '$B' needs node (ADR-0007: only 'none' is zero-dep)" >&2; exit 1; }
@@ -226,11 +228,13 @@ case "$OP" in
     ST=$(arg --state "$@") || { echo "--state required" >&2; exit 1; }
     NOTE=$(arg --note "$@" || true)
     PR=$(arg --pr "$@" || true)
+    ASG=$(arg --assignee "$@" || true)
     F="$ORCH/epics/$(slug "$ID").json"; [ -f "$F" ] || printf '{"id":"%s"}' "$ID" > "$F"
-    jq_rewrite "$F" --arg s "$ST" --arg n "${NOTE:-}" --arg p "${PR:-}" \
+    jq_rewrite "$F" --arg s "$ST" --arg n "${NOTE:-}" --arg p "${PR:-}" --arg a "${ASG:-}" \
       '.state = $s
        | (if $n != "" then .note = $n else . end)
        | (if $p != "" then .pr = ($p | tonumber? // $p) else . end)
+       | (if $a == "" then . elif $a == "-" then del(.assignee) else .assignee = $a end)
        | .ts = (now | todate)'
     jq -n --arg id "$ID" --arg s "$ST" '{id: $id, state: $s}' ;;
   pull-status)

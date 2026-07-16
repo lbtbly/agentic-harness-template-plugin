@@ -34,6 +34,8 @@ grep -q "NEVER push to main" "$W"; check "worker contract: never push to main" $
 grep -qi "UNACCEPTABLE to remove or edit steps" "$W"; check "anti-drift contract embedded in the worker prompt" $?
 grep -q "BLOCK_AFTER_ATTEMPTS" "$W"; check "non-progress backstop present" $?
 grep -q "blindspots" "$W"; check "blindspots surfaced, never auto-passed" $?
+grep -qi "record.*complexity\|complexity.*from the epic record\|epic record.s complexity" "$W"; check "reconcile prefers the planner-recorded complexity" $?
+grep -q -- "--assignee" "$W"; check "workers set/clear the assignee on the card" $?
 grep -q "capRemaining" "$W"; check "hard budget cap enforced per epic" $?
 grep -q "push-digest" "$W"; check "digest pushed to the state layer" $?
 grep -qi "screenshot" "$W"; check "workers capture screenshots of what was built (when relevant)" $?
