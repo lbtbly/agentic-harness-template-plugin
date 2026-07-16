@@ -118,7 +118,7 @@ plugin and it does **not** park/compose anything — optional capabilities are a
    `Unknown command` until the session reloads) and record the whole block in CLAUDE.md's
    "Installed plugins":
    ```
-   /plugin marketplace add your-org/agentic-harness-template-plugin
+   /plugin marketplace add lambertstudi/agentic-harness-template-plugin
    /plugin install core@harness
    /plugin install formatting@harness      # if ticked
    /plugin install orchestrator@harness    # if ticked

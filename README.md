@@ -11,7 +11,7 @@ verified against the July 2026 state of the art before implementation
 ## Install
 
 ```
-/plugin marketplace add your-org/agentic-harness-template-plugin
+/plugin marketplace add lambertstudi/agentic-harness-template-plugin
 /plugin install core@harness
 /reload-plugins        # REQUIRED: a freshly installed plugin's skills are
                        # "Unknown command" until you reload

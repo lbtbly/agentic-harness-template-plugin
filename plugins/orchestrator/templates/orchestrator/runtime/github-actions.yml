@@ -53,7 +53,7 @@ jobs:
         # The orchestrator plugin is not part of the project checkout. Clone
         # the marketplace repo shallowly and expose the plugin dir to run-with-limits.sh,
         # which passes it to `claude -p --plugin-dir`. Adjust the URL/ref at enable time.
-        run: git clone --depth 1 https://github.com/your-org/agentic-harness-template-plugin "$RUNNER_TEMP/tmpl"
+        run: git clone --depth 1 https://github.com/lambertstudi/agentic-harness-template-plugin "$RUNNER_TEMP/tmpl"
       - name: Egress firewall — MUST succeed (fail-closed)
         run: bash .devcontainer/init-firewall.sh
       - name: Phase B with usage-limit resilience
