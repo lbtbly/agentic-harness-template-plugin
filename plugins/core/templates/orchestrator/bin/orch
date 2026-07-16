@@ -1,0 +1,305 @@
+#!/bin/bash
+# orch — state-layer CLI facade (ADR-0007). One contract, pluggable backends.
+#   orch state <op> [args] [< stdin]
+# Backend from orchestrator/state.config.json ("none" = sharded .orch/ files,
+# pure shell/jq — the zero-dependency default). Remote backends delegate to
+# node orchestrator/adapters/pm-<backend>.js with the same op names.
+# Feedback is ALWAYS forge-sourced (gh/glab), never the state backend — and
+# only from trusted authors (owner/member/collaborator): /orch approve is an
+# authorization action (audit 2026-07-02, SEC-H1).
+# JSON in/out; exit non-zero on failure; never prints token values.
+set -eu
+R="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
+CFG="$R/orchestrator/state.config.json"
+ORCH="$R/.orch"
+
+backend() { jq -r '.backend // "none"' "$CFG" 2>/dev/null || echo none; }
+forge()   { jq -r '.forge // "none"'   "$CFG" 2>/dev/null || echo none; }
+
+# Collision-resistant slug: '-' is escaped before '/' is mapped, so
+# feat/a-b ("feat-s-a--b") and feat-a/b ("feat--a-s-b") stay distinct.
+slug() { printf '%s' "$1" | sed -e 's/-/--/g' -e 's,/,-s-,g' | tr -c 'a-zA-Z0-9._-' '-'; }
+cur_branch() {
+  local b
+  b=$(git -C "$R" branch --show-current 2>/dev/null)
+  [ -n "$b" ] && printf '%s' "$b" || printf 'detached'
+}
+
+usage() {
+  cat >&2 << 'EOF'
+usage: orch state <op>
+  health | capabilities
+  push-session [--auto] < session.json        pull-session [--branch B|--latest]
+  push-spec --id ID < spec.md                 get-spec --id ID | list-specs
+  push-epic < epic.json | push-backlog < []   get-epic --id ID | list-epics [--state S]
+  push-plan --epic ID < plan.md               get-plan --epic ID
+  push-status --id ID --state S [--note N] [--pr N]    pull-status
+  pull-feedback [--pr-state open]             push-digest --date YYYY-MM-DD < digest.html
+  push-suggestion --text T [--file F] < []   pull-suggestions | triage-suggestion --id N --decision accepted|rejected [--note N]
+  import --from conception/
+EOF
+  exit 1
+}
+
+[ "${1:-}" = "state" ] || usage
+shift
+OP="${1:-}"; [ -n "$OP" ] || usage
+shift || true
+
+B=$(backend)
+
+# Aggregate sharded JSON files into one array, skipping corrupt files loudly
+# instead of blanking the whole board (audit: one bad file must not eat state).
+collect_json() { # collect_json <dir>
+  local d="$1" f first=1
+  printf '['
+  for f in "$d"/*.json; do
+    [ -e "$f" ] || break
+    if jq -e . "$f" >/dev/null 2>&1; then
+      [ $first -eq 1 ] || printf ','
+      first=0
+      jq -c . "$f"
+    else
+      echo "orch: skipping corrupt state file $f" >&2
+    fi
+  done
+  printf ']\n'
+}
+
+# ---------- forge feedback (backend-independent, ADR-0007) ----------
+pull_feedback() {
+  local prstate="open" F
+  while [ $# -gt 0 ]; do case "$1" in --pr-state) prstate="$2"; shift 2;; *) shift;; esac; done
+  F=$(forge)
+  case "$F" in
+    github)
+      command -v gh >/dev/null 2>&1 || { echo '[]'; echo "gh CLI not found — no feedback pulled" >&2; return 0; }
+      # One normalized signal per PR. epicId is resolved from the branch name
+      # (orch/<id>) — the deterministic PR↔epic link. Signals only count from
+      # trusted authors; a bare "/orch approve" (no notes) is valid.
+      gh pr list --state "$prstate" --limit 200 \
+        --json number,title,headRefName,reviews,comments,statusCheckRollup 2>/dev/null | jq '
+        def trusted: (.authorAssociation // "") as $a
+          | ($a == "OWNER" or $a == "MEMBER" or $a == "COLLABORATOR");
+        [ .[] | . as $pr |
+          ([.comments[]? | select(trusted) | .body // ""]
+            | map(capture("/orch (?<sig>approve-plan|approve|revise):?[[:space:]]*(?<notes>.*)"; "g"))
+            | last) as $c |
+          {
+            pr: $pr.number, title: $pr.title,
+            epicId: ($pr.headRefName | if startswith("orch/") then .[5:] else null end),
+            signal: (if $c then $c.sig
+                     elif ([$pr.reviews[]? | select(trusted) | select(.state=="APPROVED")] | length) > 0 then "approve"
+                     elif ([$pr.reviews[]? | select(trusted) | select(.state=="CHANGES_REQUESTED")] | length) > 0 then "revise"
+                     else null end),
+            notes: (if $c and (($c.notes // "") | length > 0) then $c.notes else null end),
+            green: ([$pr.statusCheckRollup[]?
+                      | ((.conclusion // .state // "") | ascii_upcase)
+                      | select(. == "FAILURE" or . == "ERROR" or . == "TIMED_OUT"
+                               or . == "CANCELLED" or . == "ACTION_REQUIRED"
+                               or . == "STARTUP_FAILURE")] | length == 0)
+          } | select(.signal != null) ]' ;;
+    gitlab)
+      command -v glab >/dev/null 2>&1 || { echo '[]'; echo "glab CLI not found — no feedback pulled" >&2; return 0; }
+      # Trusted authors = project members (one API call), then scan MR notes.
+      local members out="[" first=1 iid mr sig notes srcbr
+      members=$(glab api "projects/:id/members/all" 2>/dev/null | jq -c '[.[].username]' || echo '[]')
+      glab mr list --output json --per-page 100 2>/dev/null \
+        | jq -c '.[] | {iid, source_branch}' 2>/dev/null \
+        | while IFS= read -r mr; do
+        iid=$(echo "$mr" | jq -r '.iid')
+        srcbr=$(echo "$mr" | jq -r '.source_branch // ""')
+        notes=$(glab mr note list "$iid" --output json 2>/dev/null || echo '[]')
+        sig=$(echo "$notes" | jq -r --argjson m "$members" '
+          [ .[] | select((.author.username // "") as $u | $m | index($u))
+            | (.body // "") | capture("/orch (?<s>approve-plan|approve|revise):?[[:space:]]*(?<n>.*)") ]
+          | last | if . then "\(.s)\t\(.n)" else empty end')
+        [ -n "$sig" ] || continue
+        s=${sig%%$'\t'*}; n=${sig#*$'\t'}
+        eid=""; case "$srcbr" in orch/*) eid=${srcbr#orch/};; esac
+        [ $first -eq 1 ] || out="$out,"; first=0
+        out="$out$(jq -nc --argjson pr "$iid" --arg s "$s" --arg n "$n" --arg e "$eid" \
+          '{pr:$pr, signal:$s, epicId:(if $e=="" then null else $e end),
+            notes:(if $n=="" then null else $n end), green:null}')"
+      done
+      echo "$out]" ;;
+    *) echo '[]' ;;
+  esac
+}
+
+# ---------- remote backends: delegate to the node adapter ----------
+if [ "$B" != "none" ] && [ "$OP" != "pull-feedback" ] && [ "$OP" != "health" ]; then
+  A="$R/orchestrator/adapters/pm-$B.js"
+  [ -f "$A" ] || { echo "unknown backend '$B' (no $A)" >&2; exit 1; }
+  command -v node >/dev/null 2>&1 || { echo "backend '$B' needs node (ADR-0007: only 'none' is zero-dep)" >&2; exit 1; }
+  exec node "$A" "$OP" "$@"
+fi
+
+# ---------- none backend: sharded local files, pure shell/jq ----------
+mkdir -p "$ORCH/sessions" "$ORCH/specs" "$ORCH/epics" "$ORCH/plans" "$ORCH/digest" "$ORCH/cache"
+
+arg() { # arg <flag> "$@" — prints the value following <flag>
+  local f="$1"; shift
+  while [ $# -gt 0 ]; do [ "$1" = "$f" ] && { printf '%s\n' "${2:-}"; return 0; }; shift; done
+  return 1
+}
+
+jq_rewrite() { # jq_rewrite <file> <jq-args...> — atomic in-place edit, loud on failure
+  local F="$1"; shift
+  jq "$@" "$F" > "$F.tmp" && mv "$F.tmp" "$F" \
+    || { rm -f "$F.tmp"; echo "orch: failed to update $F (corrupt JSON?)" >&2; exit 1; }
+}
+
+case "$OP" in
+  health)
+    jq -n '{ok: true, backend: "none", base: ".orch/"}' ;;
+  capabilities)
+    jq -n '{session:true, spec:true, epics:true, status:true, digest:true, suggestions:true, feedback:"forge"}' ;;
+
+  push-session)
+    IN=$(cat); BR=$(echo "$IN" | jq -r '.branch // empty'); [ -n "$BR" ] || BR=$(cur_branch)
+    F="$ORCH/sessions/$(slug "$BR").json"
+    if [ "${1:-}" = "--auto" ]; then
+      # mechanical snapshot: merge under .auto, never clobber the curated part
+      if [ -f "$F" ]; then
+        jq_rewrite "$F" --argjson a "$IN" '.auto = $a'
+      else
+        echo "$IN" | jq --arg br "$BR" '{branch: $br, auto: .}' > "$F"
+      fi
+    else
+      echo "$IN" | jq --arg br "$BR" '.branch = $br' > "$F"
+    fi
+    jq -n --arg id "$(slug "$BR")" '{id: $id}' ;;
+  pull-session)
+    if BR=$(arg --branch "$@"); then :
+    elif [ "${1:-}" = "--latest" ]; then
+      F=$(ls -t "$ORCH/sessions/"*.json 2>/dev/null | head -1); [ -n "$F" ] && { cat "$F"; exit 0; } || { echo '{}'; exit 0; }
+    else BR=$(cur_branch); fi
+    F="$ORCH/sessions/$(slug "$BR").json"
+    [ -f "$F" ] && cat "$F" || echo '{}' ;;
+
+  push-spec)
+    ID=$(arg --id "$@") || { echo "--id required" >&2; exit 1; }
+    cat > "$ORCH/specs/$(slug "$ID").md"; jq -n --arg id "$ID" '{id: $id}' ;;
+  get-spec)
+    ID=$(arg --id "$@") || { echo "--id required" >&2; exit 1; }
+    cat "$ORCH/specs/$(slug "$ID").md" ;;
+  list-specs)
+    # unslug for display: protect '--' first, then '-s-' -> '/', then restore '-'
+    ls -1 "$ORCH/specs/"*.md 2>/dev/null | sed 's|.*/||; s|\.md$||' \
+      | sed $'s/--/\001/g; s/-s-/\\//g; s/\001/-/g' | jq -R . | jq -s . ;;
+
+  push-epic)
+    IN=$(cat); ID=$(echo "$IN" | jq -r '.id // empty'); [ -n "$ID" ] || { echo "epic .id required" >&2; exit 1; }
+    echo "$IN" | jq '.ts = (.ts // (now | todate))' > "$ORCH/epics/$(slug "$ID").json"
+    jq -n --arg id "$ID" '{id: $id}' ;;
+  push-backlog)
+    IN=$(cat)
+    echo "$IN" | jq -e 'type == "array" and all(.[]; .id and (.id | length > 0))' >/dev/null \
+      || { echo "push-backlog: input must be an array of epics, each with a non-empty .id" >&2; exit 1; }
+    n=$(echo "$IN" | jq 'length')
+    i=0
+    while [ $i -lt "$n" ]; do
+      e=$(echo "$IN" | jq -c ".[$i]")
+      ID=$(echo "$e" | jq -r '.id')
+      echo "$e" > "$ORCH/epics/$(slug "$ID").json"
+      i=$((i+1))
+    done
+    echo '{"ok":true}' ;;
+  get-epic)
+    ID=$(arg --id "$@") || { echo "--id required" >&2; exit 1; }
+    cat "$ORCH/epics/$(slug "$ID").json" ;;
+  list-epics)
+    S=$(arg --state "$@" || true)
+    if [ -n "${S:-}" ]; then collect_json "$ORCH/epics" | jq --arg s "$S" '[.[] | select(.state == $s)]'
+    else collect_json "$ORCH/epics"; fi ;;
+
+  push-plan)
+    ID=$(arg --epic "$@") || { echo "--epic required" >&2; exit 1; }
+    cat > "$ORCH/plans/$(slug "$ID").md"; jq -n --arg id "$ID" '{epic: $id}' ;;
+  get-plan)
+    ID=$(arg --epic "$@") || { echo "--epic required" >&2; exit 1; }
+    cat "$ORCH/plans/$(slug "$ID").md" ;;
+
+  push-status)
+    ID=$(arg --id "$@") || { echo "--id required" >&2; exit 1; }
+    ST=$(arg --state "$@") || { echo "--state required" >&2; exit 1; }
+    NOTE=$(arg --note "$@" || true)
+    PR=$(arg --pr "$@" || true)
+    F="$ORCH/epics/$(slug "$ID").json"; [ -f "$F" ] || printf '{"id":"%s"}' "$ID" > "$F"
+    jq_rewrite "$F" --arg s "$ST" --arg n "${NOTE:-}" --arg p "${PR:-}" \
+      '.state = $s
+       | (if $n != "" then .note = $n else . end)
+       | (if $p != "" then .pr = ($p | tonumber? // $p) else . end)
+       | .ts = (now | todate)'
+    jq -n --arg id "$ID" --arg s "$ST" '{id: $id, state: $s}' ;;
+  pull-status)
+    # read-time aggregation — no shared status file to rewrite (ADR-0007)
+    collect_json "$ORCH/epics" \
+      | jq '[.[] | {id, state: (.state // "Backlog"), note: (.note // null), pr: (.pr // null), ts: (.ts // null)}]' ;;
+
+  pull-feedback) pull_feedback "$@" ;;
+
+  push-digest)
+    D=$(arg --date "$@") || { echo "--date required" >&2; exit 1; }
+    case "$D" in
+      [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
+      *) echo "--date must be YYYY-MM-DD" >&2; exit 1 ;;
+    esac
+    # The caller sends the COMPLETE daily file (it appends run sections itself)
+    # — storing replaces, so re-pushes can't concatenate duplicate documents.
+    cat > "$ORCH/digest/$D.html"
+    jq -n --arg d "$D" '{date: $d}' ;;
+
+  import)
+    FROM=$(arg --from "$@") || { echo "--from required" >&2; exit 1; }
+    case "$FROM" in /*) SRC="$FROM" ;; *) SRC="$R/$FROM" ;; esac
+    n=0
+    for f in "$SRC"/*.md; do
+      [ -f "$f" ] || continue
+      base=$(basename "$f" .md); case "$base" in README|tasks) continue;; esac
+      cp "$f" "$ORCH/specs/$(slug "$base").md"; n=$((n+1))
+    done
+    jq -n --argjson n $n '{imported: $n}' ;;
+
+  push-suggestion)
+    TXT=$(arg --text "$@" || true)
+    FILE=$(arg --file "$@" || true)
+    if [ -z "${TXT:-}" ]; then
+      IN=$(cat); TXT=$(printf '%s' "$IN" | jq -r '.text // empty'); [ -z "${FILE:-}" ] && FILE=$(printf '%s' "$IN" | jq -r '.file // empty')
+    fi
+    [ -n "${TXT:-}" ] || { echo "push-suggestion: --text or JSON {text} required" >&2; exit 1; }
+    SUGG="$R/docs/SUGGESTIONS.md"; mkdir -p "$(dirname "$SUGG")"
+    [ -f "$SUGG" ] || printf '# Suggestions (growth-detection)\n\nTriaged by /doc-health (read) and /triage-suggestions (act). Checked = handled.\n\n' > "$SUGG"
+    LINE="- [ ] $(date +%F) $TXT"; [ -n "${FILE:-}" ] && LINE="$LINE — \`$FILE\`"
+    grep -qF -- "$TXT" "$SUGG" 2>/dev/null || printf '%s\n' "$LINE" >> "$SUGG"
+    jq -n --arg t "$TXT" '{ok:true, text:$t}' ;;
+  pull-suggestions)
+    SUGG="$R/docs/SUGGESTIONS.md"
+    [ -f "$SUGG" ] || { echo '[]'; exit 0; }
+    grep -n '^- \[ \] ' "$SUGG" 2>/dev/null | jq -R . | jq -s '
+      [ range(0; length) as $i | .[$i]
+        | capture("^(?<ln>[0-9]+):- \\[ \\] (?<body>.*)$")
+        | {id: ($i + 1 | tostring), line: (.ln | tonumber), text: .body} ]' ;;
+  triage-suggestion)
+    ID=$(arg --id "$@") || { echo "--id required (from pull-suggestions)" >&2; exit 1; }
+    DEC=$(arg --decision "$@") || { echo "--decision accepted|rejected required" >&2; exit 1; }
+    case "$DEC" in accepted|rejected) ;; *) echo "--decision must be accepted|rejected" >&2; exit 1 ;; esac
+    NOTE=$(arg --note "$@" || true)
+    SUGG="$R/docs/SUGGESTIONS.md"; [ -f "$SUGG" ] || { echo "no suggestions to triage" >&2; exit 1; }
+    TXT=$(awk -v n="$ID" '/^- \[ \] /{c++; if(c==n){sub(/^- \[ \] /,""); print; exit}}' "$SUGG")
+    [ -n "$TXT" ] || { echo "no unchecked suggestion with id $ID" >&2; exit 1; }
+    EID=""
+    if [ "$DEC" = "accepted" ]; then
+      EID="sug-$(slug "$TXT" | cut -c1-32)"
+      EF="$ORCH/epics/$(slug "$EID").json"; mkdir -p "$ORCH/epics"
+      [ -f "$EF" ] || jq -n --arg id "$EID" --arg t "$TXT" '{id:$id, title:$t, state:"Backlog", ts:(now|todate), source:"suggestion"}' > "$EF"
+      MARK="✅ accepted → epic $EID"
+    else
+      MARK="❌ cancelled"
+    fi
+    [ -n "${NOTE:-}" ] && MARK="$MARK ($NOTE)"
+    awk -v n="$ID" -v mark="$MARK" '/^- \[ \] /{c++; if(c==n){sub(/^- \[ \] /,"- [x] "); print $0 "  " mark; next}} {print}' "$SUGG" > "$SUGG.tmp" && mv "$SUGG.tmp" "$SUGG"
+    jq -n --arg id "$ID" --arg d "$DEC" --arg e "$EID" '{id:$id, decision:$d, epic:(if $e=="" then null else $e end)}' ;;
+  *) usage ;;
+esac
