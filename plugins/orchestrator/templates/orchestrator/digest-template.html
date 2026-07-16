@@ -1,7 +1,12 @@
 <!-- Morning digest — the SINGLE human touchpoint for an overnight run.
-     ONE FILE PER DAY. A same-date re-run APPENDS a <details> "Run N" block at the
-     end, never overwrites. Self-contained: inline CSS only, CSS-only tabs (no JS).
-     Mirrored to the state backend via `orch state push-digest`.
+     ONE FOLDER PER DAY: docs/reports/nightly/<date>/ holds index.html (this file),
+     summary.md (the Slack/email short form) and shots/<epicId>/*.png (the
+     screenshots captured during browser verification). A same-date re-run APPENDS
+     a <details> "Run N" block at the end of index.html, never overwrites — and
+     adds new screenshots alongside the old ones (never delete a shot: the folder
+     is the visual history of the evolution). Self-contained: inline CSS only,
+     CSS-only tabs (no JS). Mirrored to the state backend via `orch state
+     push-digest` (the HTML travels; images live in the folder / orch/state branch).
 
      GENERATOR CONTRACT (how to fill this):
      - Tabs are ORDINAL SLOTS, not ids. Emit, IN ORDER, inside .tabs:
@@ -12,7 +17,12 @@
        then one <section class="panel"> per tab in the same order (Overview first).
        The CSS activates slot K automatically (supports up to 12 tabs) — do NOT edit CSS.
      - Each EPIC panel: recap · ticket link (remote board only — drop on `none`) ·
-       PR + commit(s) with approve/revise actions · "What to test" · gates · git diff.
+       PR + commit(s) with approve/revise actions · SCREENSHOTS · "What to test" ·
+       gates · git diff.
+     - SCREENSHOTS: one <figure> per captured shot, src RELATIVE (shots/<epicId>/…)
+       so the folder is portable. Caption = the feature + the step it proves.
+       UI-less epics (API, migration, tooling): drop the section, add one line
+       "no UI surface — nothing to screenshot" so absence is explicit, never silent.
      - Replace every {{TOKEN}}; drop rows that don't apply. -->
 <!DOCTYPE html>
 <html lang="en">
@@ -21,12 +31,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nightly digest — {{DATE}}</title>
 <style>
-  :root{--bg:#f6f8fc;--card:#fff;--ink:#1a2233;--muted:#5a6478;--line:#dbe1ee;--accent:#4a6cf7;
-    --ok:#127a3e;--okbg:#e6f7ec;--warn:#8a5a00;--warnbg:#fff3d6;--hi:#b4232f;--hibg:#ffe3e8;
-    --add:#106b34;--addbg:#e6ffed;--del:#a01324;--delbg:#ffeef0;--hunk:#6a4bd0;}
-  @media (prefers-color-scheme:dark){:root{--bg:#0f1420;--card:#171d2b;--ink:#e6ebf5;--muted:#9aa6bd;--line:#2a3346;--accent:#7d96ff;
-    --ok:#5fd48a;--okbg:#12341f;--warn:#e6b24a;--warnbg:#3a2e10;--hi:#ff8790;--hibg:#3a1620;
-    --add:#5fd48a;--addbg:#0f2a1a;--del:#ff8790;--delbg:#331319;--hunk:#a892f5;}}
+  :root{--bg:#faf6ef;--card:#fffdf9;--ink:#2c211b;--muted:#77675a;--line:#eadfd0;--accent:#b45309;
+    --ok:#3f7d3a;--okbg:#e9f3e2;--warn:#92600a;--warnbg:#fdf0d5;--hi:#b3382c;--hibg:#fbe5e0;
+    --add:#3f7d3a;--addbg:#edf6e6;--del:#b3382c;--delbg:#fdeae6;--hunk:#9c5410;}
+  @media (prefers-color-scheme:dark){:root{--bg:#201914;--card:#2a211a;--ink:#f2e9dd;--muted:#b3a390;--line:#3d322a;--accent:#f0a35e;
+    --ok:#8bc98a;--okbg:#24371f;--warn:#e6b45a;--warnbg:#3a2d12;--hi:#ff9078;--hibg:#3d1f18;
+    --add:#8bc98a;--addbg:#1e3319;--del:#ff9078;--delbg:#3a1d16;--hunk:#d9a05b;}}
   *{box-sizing:border-box}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;margin:0;padding:1.5rem 1rem}
   .wrap{max-width:1000px;margin:0 auto}
@@ -47,6 +57,11 @@
   ol.tests{margin:.3rem 0;padding-left:1.2rem} ol.tests li{margin:.35rem 0}
   .commit{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85rem}
   .actions{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:.6rem .8rem;margin:.5rem 0}
+  .shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.7rem;margin:.4rem 0}
+  .shots figure{margin:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
+  .shots img{display:block;width:100%;height:150px;object-fit:cover;object-position:top}
+  .shots figcaption{padding:.35rem .55rem;font-size:.78rem;color:var(--muted);border-top:1px solid var(--line)}
+  .shots a{display:block}
   pre.diff{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:.7rem .9rem;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;line-height:1.4;margin:.3rem 0}
   pre.diff .add{color:var(--add);background:var(--addbg);display:block} pre.diff .del{color:var(--del);background:var(--delbg);display:block}
   pre.diff .hunk{color:var(--hunk);display:block} pre.diff .meta{color:var(--muted);display:block}
@@ -81,6 +96,8 @@
     <h3>Cross-epic consistency</h3><p>{{CONSISTENCY_VERDICT_AND_EVIDENCE}}</p>
     <h3>Deploy</h3><p>{{DEPLOY_DETAIL}}</p>
     <h3>Deferred / paused</h3><p>{{DEFERRED_AND_PAUSED}}</p>
+    <h3>This folder</h3><p>Everything for {{DATE}} lives here: this page, <a href="summary.md">summary.md</a>,
+      and <code>shots/&lt;epic&gt;/</code> — compare with previous days' folders to track the evolution.</p>
   </section>
 
   <!-- ===== slot 2..N: ONE PANEL PER EPIC (repeat this <section>, same order as inputs/labels) ===== -->
@@ -94,6 +111,15 @@
     <div class="kv"><b>PR</b> <a href="{{PR_URL}}">#{{PR}} — {{PR_TITLE}}</a></div>
     <div class="kv"><b>Commit</b> <span class="commit"><a href="{{COMMIT_URL}}">{{COMMIT_SHA}}</a> {{COMMIT_MSG}}</span></div><!-- expect ONE commit/epic -->
     <div class="actions">On this PR: <code>/orch approve</code> to accept · <code>/orch revise: &lt;notes&gt;</code> to rework. {{RISK_GATE_NOTE}}</div>
+
+    <h3>Screenshots — what it looks like</h3>
+    <div class="shots">
+      <figure><a href="shots/{{EPIC_ID}}/{{SHOT_FILE}}"><img src="shots/{{EPIC_ID}}/{{SHOT_FILE}}" alt="{{SHOT_CAPTION}}" loading="lazy"></a>
+        <figcaption>{{SHOT_CAPTION}} — proves: {{FEATURE_ID}} · {{EXPECTED}}</figcaption></figure>
+      <!-- …one <figure> per shot captured during browser verification; click opens
+           full size. No UI surface? Replace the whole .shots div with:
+           <p>no UI surface — nothing to screenshot</p> -->
+    </div>
 
     <h3>What to test</h3>
     <ol class="tests">

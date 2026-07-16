@@ -12,7 +12,7 @@ Two things live here, with **different lifecycles**:
 
 ## The daily cycle (one human touchpoint, in the morning)
 
-1. **Review** — open the overnight digest (`docs/reports/nightly/<date>.html`,
+1. **Review** — open the overnight digest (`docs/reports/nightly/<date>/index.html`,
    or the Slack/email copy delivered at your chosen time) and leave `/orch approve`
    or `/orch revise: <notes>` on each PR.
 2. **`/orchestrator:kickoff`** — run it right after review. It reads those fresh signals,

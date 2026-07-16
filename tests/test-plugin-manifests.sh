@@ -70,7 +70,10 @@ fi
 # the morning report template ships with the ordinal-slot contract
 DT="$R/plugins/orchestrator/templates/orchestrator/digest-template.html"
 [ -f "$DT" ]; check "digest-template.html ships" $?
-grep -q "ONE FILE PER DAY" "$DT"; check "digest template states the append-not-overwrite contract" $?
+grep -q "ONE FOLDER PER DAY" "$DT"; check "digest template states the folder-per-day + append contract" $?
+grep -q 'class="shots"' "$DT"; check "digest template ships a screenshots gallery" $?
+grep -q 'shots/{{EPIC_ID}}' "$DT"; check "screenshots use relative shots/<epic> paths (portable folder)" $?
+! grep -qi "4a6cf7\|7d96ff" "$DT"; check "cold blue palette replaced (warm palette)" $?
 
 # runtime templates ship for all three schedulers
 for f in github-actions.yml gitlab-ci.yml routines.md; do

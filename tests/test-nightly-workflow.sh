@@ -36,6 +36,9 @@ grep -q "BLOCK_AFTER_ATTEMPTS" "$W"; check "non-progress backstop present" $?
 grep -q "blindspots" "$W"; check "blindspots surfaced, never auto-passed" $?
 grep -q "capRemaining" "$W"; check "hard budget cap enforced per epic" $?
 grep -q "push-digest" "$W"; check "digest pushed to the state layer" $?
+grep -qi "screenshot" "$W"; check "workers capture screenshots of what was built (when relevant)" $?
+grep -q 'docs/reports/nightly/${today}/index.html' "$W"; check "digest written to the per-day folder (index.html)" $?
+grep -q 'shots/' "$W"; check "screenshots collected under the day folder's shots/" $?
 # serial integration: merges happen one at a time in a for-loop, not parallel()
 grep -q "for (const r of results" "$W"; check "integration is serialized (merge queue)" $?
 # consistency gate fails closed: a crashed checker must not open the deploy gate

@@ -100,7 +100,7 @@ plan-gate, per-PR OK) stays untouched — this ADDS the unattended Phase B on to
    seeded epics — reconcile + plan-gate + partition, NO merge, NO deploy
    (prove 2 disjoint epics before enabling deploy).
 7. **Report** the morning ritual to the operator: read
-   `docs/reports/nightly/<date>.html` → test on staging → `/orch approve` or
+   `docs/reports/nightly/<date>/index.html` → test on staging → `/orch approve` or
    `/orch revise: <notes>` per PR → next kickoff merges Approved+green.
 8. **Propose commit**: `feat: enable nightly orchestrator (<runtime>/<backend>)`.
 

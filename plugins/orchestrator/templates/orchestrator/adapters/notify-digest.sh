@@ -22,12 +22,18 @@ DIR="$R/docs/reports/nightly"
 # resumed past midnight — "today's date" is wrong for both; audit L-I6).
 DATE="${1:-}"
 if [ -z "$DATE" ]; then
-  NEWEST=$(ls -1 "$DIR"/[0-9]*.html 2>/dev/null | sort | tail -1)
-  [ -n "$NEWEST" ] && DATE=$(basename "$NEWEST" .html)
+  # one FOLDER per day: docs/reports/nightly/<date>/{index.html,summary.md,shots/}
+  NEWEST=$(ls -1d "$DIR"/[0-9]*/ 2>/dev/null | sort | tail -1)
+  [ -n "$NEWEST" ] && DATE=$(basename "$NEWEST")
+  # legacy flat layout fallback (<date>.html)
+  if [ -z "$DATE" ]; then
+    NEWEST=$(ls -1 "$DIR"/[0-9]*.html 2>/dev/null | sort | tail -1)
+    [ -n "$NEWEST" ] && DATE=$(basename "$NEWEST" .html)
+  fi
 fi
 [ -n "$DATE" ] || { echo "notify-digest: no digest found in $DIR, skipping."; exit 0; }
-HTML="$DIR/$DATE.html"
-SUMMARY="$DIR/$DATE.summary.md"
+HTML="$DIR/$DATE/index.html"; SUMMARY="$DIR/$DATE/summary.md"
+[ -f "$HTML" ] || { HTML="$DIR/$DATE.html"; SUMMARY="$DIR/$DATE.summary.md"; }  # legacy
 
 [ -f "$CFG" ] || { echo "notify-digest: no config, skipping."; exit 0; }
 [ -f "$HTML" ] || { echo "notify-digest: no digest for $DATE, skipping."; exit 0; }
@@ -38,7 +44,7 @@ url_base=$(jq -r '.digest_url_base // empty' "$CFG" 2>/dev/null)
 [ -n "$channels" ] || { echo "notify-digest: no channels enabled, skipping."; exit 0; }
 
 if [ -f "$SUMMARY" ]; then BODY=$(cat "$SUMMARY"); else BODY="Nightly digest for $DATE is ready. Open the attached HTML for the full test sequence and per-PR risk flags."; fi
-LINK="${url_base:+$url_base/$DATE.html}"
+LINK="${url_base:+$url_base/$DATE/index.html}"
 
 slack_ok() { jq -e '.ok == true' >/dev/null 2>&1; }
 

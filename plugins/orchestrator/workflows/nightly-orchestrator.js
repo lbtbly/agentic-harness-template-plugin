@@ -150,7 +150,12 @@ if (planned.length) {
           make to this file is a false→true on "passes". If a feature's surface is a
           known blindspot (e.g. a native OS dialog the browser can't see), leave
           passes:false and record it in "blindspots" so the digest flags it — never
-          auto-pass it. "done" is true ONLY when every feature passes (or is an
+          auto-pass it. WHEN THE FEATURE HAS A UI SURFACE, capture a screenshot of the
+          "expected" state you just observed (the browser tool's screenshot) and save it to
+          docs/reports/nightly/${today}/shots/${e.id}/<feature-id>.png — it is the visual
+          evidence the digest shows the reviewer and the trace that lets them track the
+          evolution day over day. Purely non-visual work (API, migration, tooling): skip,
+          and say so in your notes. Never overwrite a previous day's folder. "done" is true ONLY when every feature passes (or is an
           acknowledged blindspot). If no feature_list.json exists yet, build it from
           the approved plan's acceptance criteria first (schema: .orch/feature-list.schema.json).
        4. Commit as EXACTLY ONE commit per epic: do the work, then squash to a
@@ -360,11 +365,17 @@ await agent(
    Header: N_EPICS; N_READY = green+integrated and NOT high-risk-awaiting-audit;
    N_ATTENTION = failed/paused/consistency-broken/high-risk-awaiting-audit. Overview
    panel: consistency verdict+evidence, deploy detail, deferred/paused (resume time).
-   Write it in THREE places:
-   1. docs/reports/nightly/${today}.html — if it exists, APPEND a
+   SCREENSHOTS: the build workers saved verification shots under
+   docs/reports/nightly/${today}/shots/<epicId>/. In each epic's panel fill the
+   "Screenshots" gallery — one <figure> per shot, src RELATIVE (shots/<epicId>/<file>),
+   caption = feature + the expected state it proves. An epic with no shots gets the
+   explicit "no UI surface — nothing to screenshot" line (absence is stated, never
+   silent). Never delete or overwrite a shot — the day folders are the visual history.
+   Write it in THREE places (ONE FOLDER PER DAY — docs/reports/nightly/${today}/):
+   1. docs/reports/nightly/${today}/index.html — if it exists, APPEND a
       "<details><summary>Run N …</summary>…</details>" block at the end, NEVER overwrite;
    2. bash ${ORCH} state push-digest --date ${today} < the same content;
-   3. docs/reports/nightly/${today}.summary.md — SHORT plain-markdown for Slack/email:
+   3. docs/reports/nightly/${today}/summary.md — SHORT plain-markdown for Slack/email:
       "✅ Went well" (green, OK-ready epics) + "⚠️ Needs attention" (failed/paused/
       consistency-broken/high-risk-awaiting-audit), 6–10 bullets, no HTML.
    Return JSON: {written: true, path}.`,

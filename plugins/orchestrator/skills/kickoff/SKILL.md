@@ -9,7 +9,7 @@ Prerequisite: the orchestrator is enabled (`/orchestrator:enable-orchestrator` d
 setup). The daily order is **review first, then kickoff**:
 
 1. **(Before /orchestrator:kickoff — you)** Open the overnight digest
-   (`docs/reports/nightly/<date>.html`, or the Slack/email copy) and, on each PR,
+   (`docs/reports/nightly/<date>/index.html`, or the Slack/email copy) and, on each PR,
    leave `/orch approve` or `/orch revise: <notes>`. `/orchestrator:kickoff` reads exactly those
    fresh signals — so comment before you run it.
 
