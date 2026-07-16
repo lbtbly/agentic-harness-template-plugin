@@ -95,7 +95,7 @@ the top; `defaultMode` is `plan`; playwright present; exactly one init commit
 ```
 $ O=orchestrator/bin/orch
 $ bash $O state health
-$ echo '{"id":"trial-1","title":"First epic","state":"Needs-plan","footprint":["src/**"]}' | bash $O state push-epic
+$ echo '{"id":"trial-1","title":"greet CLI","state":"Needs-plan","footprint":["apps/greet/**"],"description":"A minimal Node/TS CLI at apps/greet: `node apps/greet/index.js <name>` prints Hello, <name>! and exits 0; no argument prints usage to stderr and exits 1. Intent: greet by name from the terminal; misuse fails loudly with guidance."}' | bash $O state push-epic
 $ bash $O state pull-status
 $ echo '{"status":"smoke test","nextSteps":["none"]}' | bash $O state push-session
 $ bash $O state pull-session
@@ -145,7 +145,9 @@ or claim success.
 » /orchestrator:plan trial-1
 ```
 
-**Expect:** the planner decomposes/authors `.orch/epics/trial-1/feature_list.json`
+**Expect:** the planner authors from the epic's `description` (an epic with no
+intent is REFUSED — the anti-drift guardrail; give it a description rather than
+letting it invent one). It decomposes/authors `.orch/epics/trial-1/feature_list.json`
 (user-level steps, `passes:false`, the contract const verbatim), `validate-dod`
 exits 0, an independent design-review verdict is recorded, and the epic moves to
 `Planned` — check with `bash $O state pull-status`. The planner must never
