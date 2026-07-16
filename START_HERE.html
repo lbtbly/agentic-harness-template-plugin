@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Overnight Harness — Architecture Overview</title>
+<script>
+  /* Apply saved/preferred theme before paint to avoid a flash. Default: dark. */
+  (function(){try{
+    var s=localStorage.getItem('harness-theme');
+    var t=s||((window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark');
+    if(t==='light')document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}})();
+</script>
+<style>
+  :root{
+    --bg:#0b0e17; --bg2:#0f1320; --panel:#141a2b; --panel2:#1a2237;
+    --line:#243049; --line2:#2f3d5c;
+    --ink:#e8ecf6; --muted:#9aa7c2; --faint:#6b789a;
+    --acc:#7c8bff; --acc2:#38d0c9; --acc3:#c07bff;
+    --warn:#ffb454; --danger:#ff6b8b; --ok:#4ad991;
+    --grad:linear-gradient(120deg,#7c8bff 0%,#c07bff 45%,#38d0c9 100%);
+    --radius:16px; --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --nav-w:260px; --code-bg:#0d1220; --code-ink:#cdd6f4;
+  }
+  :root[data-theme="light"]{
+    --bg:#f3f5fa; --bg2:#ffffff; --panel:#ffffff; --panel2:#eef1f8;
+    --line:#dde3f0; --line2:#c9d2e6;
+    --ink:#1a2233; --muted:#55617d; --faint:#8791a8;
+    --acc:#4a5de8; --acc2:#0e9c94; --acc3:#8f46d8;
+    --warn:#9a6200; --danger:#c2334f; --ok:#128a4c;
+    --code-bg:#0f1320; --code-ink:#dfe3f0;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:
+      radial-gradient(1100px 700px at 80% -10%,rgba(124,139,255,.12),transparent 60%),
+      radial-gradient(900px 600px at -10% 10%,rgba(56,208,201,.10),transparent 55%),
+      var(--bg);
+    color:var(--ink);font-family:var(--sans);line-height:1.6;
+    font-size:16px;-webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--acc2);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code{font-family:var(--mono);font-size:.86em;background:var(--panel2);border:1px solid var(--line);
+    padding:.08em .38em;border-radius:6px;color:var(--ink);white-space:nowrap}
+  h1,h2,h3,h4{line-height:1.2;font-weight:700;letter-spacing:-.01em}
+
+  .shell{display:grid;grid-template-columns:var(--nav-w) 1fr;max-width:1500px;margin:0 auto}
+  nav.side{
+    position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+    padding:26px 18px 40px;border-right:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(15,19,32,.06),transparent);backdrop-filter:blur(6px);
+  }
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:22px}
+  .brand .mark{width:34px;height:34px;border-radius:9px;background:var(--grad);flex:0 0 auto;
+    box-shadow:0 6px 22px rgba(124,139,255,.4)}
+  .brand b{font-size:15px;letter-spacing:.02em}
+  .brand span{display:block;font-size:11px;color:var(--faint);font-weight:500;letter-spacing:.06em;text-transform:uppercase}
+  nav.side a.nl{display:block;padding:7px 12px;border-radius:9px;color:var(--muted);
+    font-size:13.5px;font-weight:500;border-left:2px solid transparent;transition:.15s}
+  nav.side a.nl:hover{color:var(--ink);background:rgba(124,139,255,.08);text-decoration:none}
+  nav.side .grp{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);
+    margin:18px 12px 6px;font-weight:700}
+  .theme-btn{margin-top:20px;width:100%;padding:8px 12px;border-radius:9px;cursor:pointer;
+    background:var(--panel);border:1px solid var(--line2);color:var(--muted);font-size:12.5px;font-family:var(--mono)}
+  .theme-btn:hover{color:var(--ink);border-color:var(--acc)}
+
+  main{padding:0 clamp(20px,4vw,64px) 90px;min-width:0}
+  section{padding-top:56px;scroll-margin-top:20px}
+  section>h2{font-size:clamp(24px,3vw,32px);margin:0 0 6px}
+  .lead{color:var(--muted);max-width:70ch;margin:0 0 24px}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--acc);font-weight:700;margin-bottom:8px}
+
+  .hero{padding-top:64px}
+  .hero h1{font-size:clamp(34px,6vw,60px);margin:14px 0 10px;letter-spacing:-.02em}
+  .hero h1 .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p.tag{font-size:clamp(17px,2.3vw,21px);color:var(--ink);max-width:64ch;margin:0 0 8px;font-weight:500}
+  .hero p.sub{color:var(--muted);max-width:70ch;margin:0 0 26px}
+  .badges{display:flex;flex-wrap:wrap;gap:9px;margin:22px 0 6px}
+  .badge{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;
+    background:var(--panel);border:1px solid var(--line2);font-size:13px;color:var(--ink);font-weight:600}
+  .badge b{color:var(--acc2)}
+  .principle-line{margin-top:22px;padding:14px 18px;border-radius:12px;border:1px dashed var(--line2);
+    background:rgba(124,139,255,.06);color:var(--ink);font-weight:500;max-width:72ch}
+  .principle-line b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .card{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);
+    border-radius:var(--radius);padding:20px 20px 18px;position:relative;overflow:hidden}
+  .card h3{margin:0 0 6px;font-size:17px;display:flex;align-items:center;gap:9px}
+  .card p{margin:0;color:var(--muted);font-size:14px}
+  .card .ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:16px;
+    background:rgba(124,139,255,.14);border:1px solid var(--line2);flex:0 0 auto}
+
+  .twrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg2);margin:14px 0}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:540px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  thead th{position:sticky;top:0;background:var(--panel2);color:var(--ink);font-weight:700;
+    font-size:12px;letter-spacing:.03em;text-transform:uppercase;z-index:1}
+  tbody tr:hover{background:rgba(124,139,255,.05)}
+  tbody tr:last-child td{border-bottom:none}
+  td code{white-space:nowrap}
+  .muted{color:var(--muted)}
+
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700;
+    border:1px solid var(--line2);white-space:nowrap}
+  .p-auto{color:var(--acc2);background:rgba(56,208,201,.1);border-color:rgba(56,208,201,.3)}
+  .p-gated{color:var(--warn);background:rgba(255,180,84,.1);border-color:rgba(255,180,84,.3)}
+  .p-esc{color:var(--danger);background:rgba(255,107,139,.1);border-color:rgba(255,107,139,.3)}
+  .p-opus{color:var(--acc3);background:rgba(192,123,255,.1);border-color:rgba(192,123,255,.3)}
+  .p-son{color:var(--acc);background:rgba(124,139,255,.1);border-color:rgba(124,139,255,.3)}
+  .p-hai{color:var(--ok);background:rgba(74,217,145,.1);border-color:rgba(74,217,145,.3)}
+  .p-core{color:var(--ok);background:rgba(74,217,145,.1);border-color:rgba(74,217,145,.3)}
+  .p-mod{color:var(--acc);background:rgba(124,139,255,.1);border-color:rgba(124,139,255,.3)}
+  .p-you{color:var(--warn);background:rgba(255,180,84,.1);border-color:rgba(255,180,84,.3)}
+  .p-ai{color:var(--acc2);background:rgba(56,208,201,.1);border-color:rgba(56,208,201,.3)}
+
+  pre{background:var(--code-bg);border:1px solid var(--line2);border-radius:12px;
+    padding:16px 18px;overflow-x:auto;margin:14px 0}
+  pre code{background:none;border:none;padding:0;color:var(--code-ink);white-space:pre;font-size:13px;line-height:1.65}
+  .c-dim{color:#7f88a3}.c-am{color:#f0b429}.c-tl{color:#5fd0b0}
+
+  .callout{margin:16px 0;padding:14px 18px;border-radius:12px;border:1px solid var(--line);
+    border-left:3px solid var(--acc);background:var(--panel);max-width:76ch}
+  .callout .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--acc);display:block;margin-bottom:4px}
+  .callout p{margin:0;color:var(--muted);font-size:14.5px}
+  .callout.warn{border-left-color:var(--warn)} .callout.warn .lbl{color:var(--warn)}
+  .callout.ok{border-left-color:var(--ok)} .callout.ok .lbl{color:var(--ok)}
+  .callout.danger{border-left-color:var(--danger)} .callout.danger .lbl{color:var(--danger)}
+
+  .steps{margin:18px 0;display:flex;flex-direction:column}
+  .step{display:grid;grid-template-columns:44px 1fr;gap:14px;padding:14px 0;border-top:1px solid var(--line)}
+  .step:first-child{border-top:none}
+  .step .n{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--acc);padding-top:2px}
+  .step h4{margin:0 0 3px;font-size:15.5px}
+  .step p{margin:0;font-size:14px;color:var(--muted)}
+
+  .flow{display:flex;gap:8px;overflow-x:auto;padding:6px 2px 14px;margin:14px 0}
+  .lc{flex:0 0 auto;width:148px;border:1px solid var(--line);border-radius:11px;padding:11px 13px;
+    background:var(--panel);display:flex;flex-direction:column;gap:6px}
+  .lc .st{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--ink)}
+  .lc p{margin:0;font-size:12px;color:var(--muted)}
+  .lc .who{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:auto;padding-top:6px;border-top:1px dashed var(--line)}
+  .lc.you{border-color:var(--warn)} .lc.you .st{color:var(--warn)}
+  .lc.rework{border-color:var(--danger)} .lc.rework .st{color:var(--danger)}
+  .lc.done{border-color:var(--ok)} .lc.done .st{color:var(--ok)}
+
+  footer{margin-top:70px;padding-top:24px;border-top:1px solid var(--line);color:var(--faint);
+    font-size:13px;font-family:var(--mono)}
+
+  @media(max-width:960px){
+    .shell{grid-template-columns:1fr}
+    nav.side{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}
+    .g2,.g3{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<nav class="side">
+  <div class="brand">
+    <div class="mark"></div>
+    <div><b>The Overnight Harness</b><span>start here</span></div>
+  </div>
+  <div class="grp">Orientation</div>
+  <a class="nl" href="#overview">Overview &amp; laws</a>
+  <a class="nl" href="#failures">Four failure modes</a>
+  <a class="nl" href="#setup">Install the plugins</a>
+  <a class="nl" href="#plugins">The five plugins</a>
+  <div class="grp">Running it</div>
+  <a class="nl" href="#flavors">Two flavors · a day</a>
+  <a class="nl" href="#loop">Run-to-completion loop</a>
+  <a class="nl" href="#dod">Definition of done</a>
+  <a class="nl" href="#concurrency">Parallel build, serial merge</a>
+  <a class="nl" href="#guards">Guards &amp; throttling</a>
+  <a class="nl" href="#board">Board &amp; epic lifecycle</a>
+  <a class="nl" href="#report">The morning report</a>
+  <div class="grp">Machinery</div>
+  <a class="nl" href="#safety">Safety model</a>
+  <a class="nl" href="#agents">Agents</a>
+  <a class="nl" href="#state">State layer</a>
+  <a class="nl" href="#commands">Command reference</a>
+  <a class="nl" href="#verified">Tests &amp; deviations</a>
+  <button class="theme-btn" id="themeToggle" type="button">◐ toggle theme</button>
+</nav>
+
+<main>
+
+<section class="hero" id="top">
+  <div class="eyebrow">Claude Code plugin marketplace · autonomous coding</div>
+  <h1>One engineer, asleep.<br><span class="g">Several features, shipping.</span></h1>
+  <p class="tag">Run a coding agent unattended overnight — packaged as plugins, gated where it counts, and built around the one hard problem: knowing when the work is actually <em>done</em>.</p>
+  <p class="sub">You launch one command before bed. By morning, a queue of features has been built in parallel, verified end-to-end, and the safe ones have merged themselves to a green <code>main</code> — while anything risky or ambiguous waits, clearly, for you.</p>
+  <div class="badges">
+    <span class="badge">📦 <b>5</b> plugins, installed not copied</span>
+    <span class="badge">🧪 <b>321</b> assertions, built test-first</span>
+    <span class="badge">🧑‍⚖️ human-gated where it counts</span>
+    <span class="badge">💳 subscription-friendly (no API key required)</span>
+  </div>
+  <div class="principle-line">The load-bearing idea: <b>an agent must never be the judge of its own completion.</b> "Done" is an external, machine-checkable contract — get that wrong and the run either quits early or never stops. Everything here serves that one truth.</div>
+</section>
+
+<section id="overview">
+  <div class="eyebrow">Mental model</div>
+  <h2>Three laws to design against</h2>
+  <p class="lead">The model is the engine; the harness is everything around it that makes an unattended run <b>safe, verifiable, and resumable</b>.</p>
+  <div class="grid g2">
+    <div class="card"><h3><span class="ic">🧠</span>The repo is the only memory</h3><p>Each session starts amnesiac — like shift workers who never met. Anything not in the repo, git history, or the state layer does not exist next session. Externalize state; never rely on the conversation.</p></div>
+    <div class="card"><h3><span class="ic">🔍</span>Verification is the bottleneck</h3><p>Generation is cheap; trustworthy verification is not. The whole game is moving "is this correct?" off the human and into mechanical loops — tests, browser checks, linters, adversarial reviewers.</p></div>
+    <div class="card"><h3><span class="ic">🧑‍✈️</span>Humans steer, agents execute</h3><p>You design the environment, specify intent, and own the gates that carry product and security judgment. The machine does the volume between those gates.</p></div>
+    <div class="card"><h3><span class="ic">🔧</span>A failure is a harness bug</h3><p>When the agent fails, the question is never "try harder" — it's "what capability or signal was missing, and how do I make it legible and enforceable?"</p></div>
+  </div>
+</section>
+
+<section id="failures">
+  <div class="eyebrow">What it must defeat</div>
+  <h2>The four ways an overnight run rots</h2>
+  <div class="steps">
+    <div class="step"><div class="n">01</div><div><h4>One-shotting</h4><p>Tries to do everything at once, exhausts its context mid-feature, leaves a half-built mess. <b>Parry:</b> one unit of work per session; a locked scope.</p></div></div>
+    <div class="step"><div class="n">02</div><div><h4>Premature victory (project)</h4><p>A late session sees progress and declares the whole project finished. <b>Parry:</b> a feature list that <i>defines</i> finished — done when every item passes, not before.</p></div></div>
+    <div class="step"><div class="n">03</div><div><h4>Premature victory (feature)</h4><p>Marks a feature done after a unit test or a <code>curl</code>, never exercising it as a user would. <b>Parry:</b> end-to-end browser verification, defined up front.</p></div></div>
+    <div class="step"><div class="n">04</div><div><h4>Dirty state</h4><p>Leaves bugs and disordered code the next shift inherits at interest. <b>Parry:</b> "clean state" = mergeable; commit + progress note every session.</p></div></div>
+  </div>
+</section>
+
+<section id="setup">
+  <div class="eyebrow">Getting started</div>
+  <h2>Install the plugins</h2>
+  <p class="lead">It ships as a plugin marketplace, not a copied repo: one versioned dependency many projects share and upgrade in place. Installing a plugin is the on/off switch; skills are namespaced (<code>/orchestrator:run</code>, <code>/orchestrator:kickoff</code>, …).</p>
+<pre><code><span class="c-dim"># add once, install the core, then reload so its skills register</span>
+/plugin marketplace add <span class="c-tl">your-org/agentic-harness-template-plugin</span>
+/plugin install core@harness
+/reload-plugins
+
+<span class="c-dim"># stand up a project, then add the autonomous loop</span>
+/core:new-project
+/plugin install orchestrator@harness   &amp;&amp;   /reload-plugins
+/orchestrator:enable-orchestrator</code></pre>
+  <div class="callout warn"><span class="lbl">The reload gotcha</span><p>A freshly installed plugin's skills are "Unknown command" until you run <code>/reload-plugins</code>. It's baked into every install instruction here — the single most common "why doesn't the command exist" stumble.</p></div>
+  <div class="callout"><span class="lbl">Two prompts, one harness</span><p><code>/core:new-project</code> is the <b>initializer</b> — it builds the environment once (feature-list scaffolds, a one-command app launch, the first commit). Every session afterward is the same <b>coder</b> prompt: incremental progress, one unit, clean exit.</p></div>
+
+  <h3 style="margin:26px 0 8px;font-size:18px">Turning autonomy on — the six preconditions</h3>
+  <p class="lead" style="margin-bottom:10px"><code>/orchestrator:enable-orchestrator</code> <b>verifies, doesn't trust</b>: if any precondition is missing it stops and lists what's absent.</p>
+  <div class="twrap"><table>
+    <thead><tr><th>#</th><th>Precondition</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><code>autonomous</code> profile</td><td>chosen at scaffold (or confirm the upgrade)</td></tr>
+      <tr><td>2</td><td>A green test suite</td><td>the loop verifies against your tests; a bare scaffold has nothing to prove</td></tr>
+      <tr><td>3</td><td>Staging deploy command + URL</td><td>each night's integration branch deploys so you (and it) can exercise it</td></tr>
+      <tr><td>4</td><td>Sandbox devcontainer</td><td>default-deny egress firewall — unattended execution stays boxed in</td></tr>
+      <tr><td>5</td><td>Branch protection on <code>main</code></td><td>verified via the forge API; the agent's token <b>cannot</b> bypass it — deny-rules alone can't stop a refspec push</td></tr>
+      <tr><td>6</td><td>A forge (github/gitlab)</td><td>every operator signal (plan approval, per-PR OK/revise) is read from the forge, never the board</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout ok"><span class="lbl">Reversible</span><p><code>/orchestrator:disable-orchestrator</code> removes the loop (schedule, risk policy, run profile) but <b>preserves the board and all its data</b>, past digests, and committed settings. The board outlives the orchestrator; enable and disable freely.</p></div>
+</section>
+
+<section id="plugins">
+  <div class="eyebrow">Packaging</div>
+  <h2>The five plugins</h2>
+  <div class="twrap"><table>
+    <thead><tr><th>Plugin</th><th>Kind</th><th>What it carries</th></tr></thead>
+    <tbody>
+      <tr><td><code>core</code></td><td><span class="pill p-core">install first</span></td><td>The <code>/core:new-project</code> scaffolder; handoff / codemap / doc-health / spec / triage-suggestions skills; architect, code-reviewer, debugger, design-reviewer, docs-writer agents; the guard hooks (secret-guard, protect-paths, block-no-verify, protect-policy-paths) + session machinery; the <code>orch</code> state layer + feature-list contract templates.</td></tr>
+      <tr><td><code>orchestrator</code></td><td><span class="pill p-mod">opt-in</span></td><td>The overnight loop: enable / kickoff / plan / run / disable skills; planner + integration-checker agents; dod-verify + nightly-orchestrator workflows; run-to-done driver, limits wrapper, risk-policy, CODEOWNERS, digest template, three scheduler runtimes.</td></tr>
+      <tr><td><code>workbench</code></td><td><span class="pill p-mod">opt-in</span></td><td>security-auditor (the second gate on risky merges), refactorer (worktree-isolated), researcher, test-runner; the db-migration skill.</td></tr>
+      <tr><td><code>formatting</code></td><td><span class="pill p-mod">opt-in</span></td><td>Format-on-edit hook — a failing lint becomes a remediation prompt to the next agent.</td></tr>
+      <tr><td><code>ci</code></td><td><span class="pill p-mod">opt-in</span></td><td><code>/ci:setup</code> scaffolds the forge's Claude PR-assistant workflows. The nightly schedule is NOT here — that's enable-orchestrator.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="flavors">
+  <div class="eyebrow">How it runs</div>
+  <h2>Two flavors, and a typical day</h2>
+  <div class="grid g2">
+    <div class="card"><h3><span class="pill p-gated">gated</span> Scheduled nightly — the recommended default</h3><p>A scheduled build produces one PR per epic overnight; each morning <b>you</b> review and merge. Every human gate stays — plans approved by you, nothing reaches <code>main</code> without your per-PR OK.</p></div>
+    <div class="card"><h3><span class="pill p-auto">auto</span> Run-to-completion</h3><p><code>/orchestrator:run</code> — launch and it runs until your chosen scope is drained: low-risk epics <b>auto-merge</b>, high-risk escalate. Keeps the plan gate, trades the per-PR merge gate for a risk gate. Turn on after the gated flavor has earned your trust.</p></div>
+  </div>
+
+  <h3 style="margin:26px 0 8px;font-size:18px">A day in the gated flavor — one morning touchpoint</h3>
+  <div class="steps">
+    <div class="step"><div class="n">~09:00</div><div><h4><span class="pill p-you">you</span> Review last night's PRs</h4><p>The digest arrives — your worklist. Per PR: test it on staging following the ordered sequence, then leave one signal: <code>/orch approve</code> or <code>/orch revise: &lt;notes&gt;</code>. Give the high-risk flags the closer read.</p></div></div>
+    <div class="step"><div class="n">~11:00</div><div><h4><span class="pill p-you">you · ~15 min</span> Run <code>/orchestrator:kickoff</code></h4><p>Reads your OK/revise signals from the forge (matched via the <code>orch/&lt;id&gt;</code> branch), risk-checks then merges OK'd + green PRs one-by-one (full suite after each; a red merge is reverted), queues commented PRs for rework, drafts plans for new epics — <b>you approve each plan live</b> (the plan gate) — then partitions files and detaches.</p></div></div>
+    <div class="step"><div class="n">~12:30 →</div><div><h4><span class="pill p-ai">the machine</span> The build runs itself</h4><p>Fires on the schedule inside the egress-locked sandbox under its own permission profile: one worker per epic in its own worktree — reworks the commented ones, builds the new ones, integrates serially, checks overlaps, deploys staging, writes tomorrow's digest. A usage limit pauses it; it resumes on reset.</p></div></div>
+  </div>
+</section>
+
+<section id="loop">
+  <div class="eyebrow">The loop</div>
+  <h2>Run-to-completion, as a pipeline</h2>
+  <p class="lead">The driver owns an outer loop. Steps 1–2 need you briefly at launch; 3–7 run unattended until your selected scope is drained or a guard trips.</p>
+  <div class="steps">
+    <div class="step"><div class="n">01</div><div><h4>Launch &amp; scope</h4><p>All epics in order, or the first N — it lists their names to confirm, and folds in the previous run's PR feedback.</p></div></div>
+    <div class="step"><div class="n">02</div><div><h4>Plan</h4><p>Oversized initiatives decompose into right-sized epics; any epic without a DoD gets one authored. An independent reviewer validates each DoD against intent before a line is built.</p></div></div>
+    <div class="step"><div class="n">03</div><div><h4>Build — concurrently</h4><p>One subagent per epic, each in its own git worktree, up to a cap. Epics partition into waves by file footprint: disjoint run together, heavy overlaps defer.</p></div></div>
+    <div class="step"><div class="n">04</div><div><h4>Verify — the DoD</h4><p>Each epic loops build → verify → improve until the independent four-stage DoD passes. A no-progress guard breaks stubborn epics out to escalation.</p></div></div>
+    <div class="step"><div class="n">05</div><div><h4>Integrate &amp; merge — serially</h4><p>A single merge queue: integrate → cross-epic regression → risk classify → <span class="pill p-auto">low → auto-merge</span> to a green <code>main</code> (suite re-runs; auto-revert on red) or <span class="pill p-esc">high → escalate</span>.</p></div></div>
+    <div class="step"><div class="n">06</div><div><h4>Guard &amp; throttle</h4><p>Budget, wall-clock, no-progress, thrash and safety guards bound the run; a usage monitor slows and pauses before hitting limits, then resumes on reset.</p></div></div>
+    <div class="step"><div class="n">07</div><div><h4>Terminate</h4><p>Ends when every selected epic is merged or escalated — or a hard guard trips with a clean checkpoint. It never declares the <i>product</i> done; only "the scope you picked is resolved."</p></div></div>
+  </div>
+</section>
+
+<section id="dod">
+  <div class="eyebrow">The crux</div>
+  <h2>The definition of done</h2>
+  <p class="lead">If "done" is only "the tests pass," the agent ships things that pass but are wrong. A trustworthy DoD spans engineering, product, and design — and is checked by something <b>other than the thing that built it</b>.</p>
+<pre><code><span class="c-dim">// per-epic .orch/epics/&lt;id&gt;/feature_list.json — the termination authority</span>
+{
+  "epic": "checkout-v2",
+  "acceptanceCriteria": [{ "id":"ac1", "statement":"user can pay with a saved card", "automated":true }],
+  "testLevels": { "unit":true, "integration":true, "e2e":true },
+  "epicTests": ["tests/checkout/pay.e2e.ts"],
+  "designRefs": ["docs/design/checkout.png"],
+  "features": [{
+    "id":"f1", "description":"pay with saved card",
+    "steps":["open /checkout","choose saved card","confirm"],
+    "expected":"order confirmed, receipt shown", "passes": <span class="c-am">false</span>
+  }]
+}</code></pre>
+  <p class="lead" style="margin-bottom:10px">JSON, not Markdown — models corrupt structured files far less. The <b>only</b> permitted mutation is flipping <code>passes</code> to true after a real pass; editing or deleting steps to look complete is prohibited by contract and enforced by <code>validate-dod</code>.</p>
+
+  <div class="grid g2" style="margin-top:8px">
+    <div class="card"><h3><span class="ic">1️⃣</span>Tests, every level</h3><p>Unit + integration + e2e, plus the tests authored for this epic; typecheck + lint clean. Never weaken a test to pass — fix the code.</p></div>
+    <div class="card"><h3><span class="ic">2️⃣</span>Functional E2E, as a user</h3><p>Drive the running app in a real browser (Playwright / browser MCP), walking each feature's steps. Invisible surfaces go to <code>blindspots</code>, never silently passed.</p></div>
+    <div class="card"><h3><span class="ic">3️⃣</span>Acceptance assertions</h3><p>Each product-level criterion checked — automated where possible, judge-evaluated otherwise.</p></div>
+    <div class="card"><h3><span class="ic">4️⃣</span>Independent judge panel</h3><p>Adversarial reviewers with distinct lenses (correctness / pm / design) — and <b>distinct models per lens</b>, because same-model votes correlate. Pass = strict majority AND no blocking objection; dissent escalates.</p></div>
+  </div>
+<pre><code><span class="c-dim">// what verifyDoD(epic) returns — the merge queue's input</span>
+{ "epic":"checkout-v2", "done": <span class="c-am">false</span>, "escalate": <span class="c-am">true</span>,
+  "stages": { "tests":"pass", "e2e":"pass", "acceptance":"pass", "judge":"fail" },
+  "blocking": ["judge:correctness"], "reasons": ["saved-card path 500s on expired token"] }</code></pre>
+  <div class="callout ok"><span class="lbl">No self-grading</span><p>The chain is separate at every link: the <b>planner</b> authors the DoD → an independent <b>design-reviewer</b> validates it against intent → the <b>builder</b> implements → an independent <b>judge panel</b> verifies → the <b>forge</b> (checks + CODEOWNERS) gates the merge. Human intent — the initiative you launched — is the root ground truth.</p></div>
+  <div class="callout danger"><span class="lbl">Honest limit</span><p>The judge panel is the load-bearing weak link — an LLM judging an LLM. Mitigations: diverse lenses <i>and models</i>, majority + blocking-dissent, auto-merge only for low-risk, and a morning report a human skims. Vision misses things (native modals, subtle regressions) — design-heavy work is flagged for human eyes. This is why auto-merge is scoped, not universal.</p></div>
+</section>
+
+<section id="concurrency">
+  <div class="eyebrow">Throughput</div>
+  <h2>Parallel build, serial merge</h2>
+  <p class="lead">Build wide, land narrow. Many epics build at once in isolated worktrees; a single serial queue lands them so concurrency can never race <code>main</code> into a broken state.</p>
+  <div class="grid g2">
+    <div class="card"><h3><span class="ic">🌳</span>Isolation</h3><p>One git worktree per epic (<code>orch/&lt;id&gt;</code>); parallel builders physically cannot touch each other's files.</p></div>
+    <div class="card"><h3><span class="ic">🌊</span>Waves</h3><p>The planner's footprint per epic partitions work: disjoint footprints run together; heavy overlaps go to a later wave to cut rework.</p></div>
+    <div class="card"><h3><span class="ic">🚧</span>The merge barrier</h3><p>Done epics queue: integrate → cross-epic regression on overlaps → risk-gate → merge or escalate → re-run the suite on <code>main</code>, auto-revert on red → recreate the integration branch.</p></div>
+    <div class="card"><h3><span class="ic">🔁</span>Resumability</h3><p>Git + the forge are the source of truth. A killed or paused run re-reads reality and continues; orphaned epics re-queue. Pause/resume and crashes are safe.</p></div>
+  </div>
+</section>
+
+<section id="guards">
+  <div class="eyebrow">Bounds</div>
+  <h2>Guards &amp; usage throttling</h2>
+  <p class="lead">The agent is never the authority on when to stop globally — external guards are. <b>Defer</b> (pause and resume) ≠ <b>halt</b> (checkpoint and end) ≠ <b>skip</b> (drop one epic, keep going).</p>
+  <div class="twrap"><table>
+    <thead><tr><th>Guard</th><th>Scope</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>No-progress</td><td>per epic</td><td>K improve rounds with no movement → mark blocked, escalate, move on</td></tr>
+      <tr><td>Usage throttle</td><td>run</td><td>near the ceiling → drop concurrency → pause → auto-resume on reset (defers)</td></tr>
+      <tr><td>Budget</td><td>run</td><td>hard token/cost cap → checkpoint + halt</td></tr>
+      <tr><td>Wall-clock</td><td>run</td><td>"until 07:00" / max duration → checkpoint + halt</td></tr>
+      <tr><td>Thrash</td><td>run</td><td>a whole cycle advances zero epics → halt + escalate</td></tr>
+      <tr><td>Safety</td><td>run</td><td>settings tampered / branch protection gone / sandbox down → abort</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn"><span class="lbl">Throttle, don't crash</span><p>Rate limits (429s) ride the CLI's own backoff. Hard limits (a weekly/daily cap) never sleep in-process for hours — pending epics checkpoint as <code>Paused</code> with <code>paused-until &lt;ts&gt;</code> and their origin state, the run exits cleanly, and a retry lane resumes after the reset. The loop also picks its own weight class per epic — a cheaper model for mechanical work, a stronger one for large/risky footprints, escalating once on a hard failure.</p></div>
+</section>
+
+<section id="board">
+  <div class="eyebrow">Organisation</div>
+  <h2>The board &amp; the epic lifecycle</h2>
+  <p class="lead">Work is organised as <b>initiatives</b> (big asks) the planner decomposes into <b>epics</b> (right-sized units, each with its own DoD), holding <b>features</b> (one user-verifiable behaviour each). Lay a board out as these columns and it's a live picture of the loop.</p>
+  <div class="flow">
+    <div class="lc"><div class="st">Suggested</div><p>Machine-proposed findings await your triage. The night loop never touches this lane.</p><div class="who">🤖 proposes · 🧑 triage</div></div>
+    <div class="lc you"><div class="st">Backlog</div><p>Initiatives you've filed or accepted, not yet planned.</p><div class="who">🧑 you file</div></div>
+    <div class="lc"><div class="st">Needs-plan</div><p>Awaiting a plan + your approval at the next kickoff.</p><div class="who">🧑 you / kickoff</div></div>
+    <div class="lc you"><div class="st">Planned</div><p>Plan approved by you — cleared to build.</p><div class="who">🧑 plan gate</div></div>
+    <div class="lc"><div class="st">In-progress</div><p>A worker is building or reworking it, in its worktree.</p><div class="who">🤖 build worker</div></div>
+    <div class="lc"><div class="st">Needs-review</div><p>PR open + on staging, awaiting review (or the auto-merge gate).</p><div class="who">🤖 build worker</div></div>
+    <div class="lc rework"><div class="st">Changes-requested</div><p>You revised, or a gate failed: back for rework → loops to In-progress.</p><div class="who">🧑 /orch revise</div></div>
+    <div class="lc done"><div class="st">Approved → Merged</div><p>OK'd + green → lands on main (at kickoff, or auto in run-to-completion).</p><div class="who">🧑 or risk-gate</div></div>
+  </div>
+  <div class="callout"><span class="lbl">The rework loop is the point</span><p>Needs-review doesn't only flow forward. On a revise — or an integration/consistency failure — the epic drops to Changes-requested, a worker picks it up next run, and it comes back to review. It circles until you approve it (gated) or the DoD + risk gate clear it (auto). States are backend-agnostic; signals still come from the forge, never the board.</p></div>
+</section>
+
+<section id="report">
+  <div class="eyebrow">What you wake up to</div>
+  <h2>The morning report</h2>
+  <p class="lead">Not a log to grep — a single, immutable digest written for a human with coffee. One self-contained HTML file per day (<code>docs/reports/nightly/&lt;date&gt;.html</code>); a same-day re-run <b>appends</b> a "Run 2" section, never overwrites. Delivered to Slack/email at a time you choose, and persisted to an <code>orch/state</code> branch so a build that finished past midnight still reaches you.</p>
+  <div class="grid g2">
+    <div class="card"><h3><span class="ic">✅</span>Per epic</h3><p>Summary + PR link + risk class (low = auto-merged; high = escalated with the reason), the four DoD gate results, and the staging route where it's live to click through.</p></div>
+    <div class="card"><h3><span class="ic">🧭</span>Your ten-minute check</h3><p>The top of the digest is an ordered, human-runnable test sequence: per-epic acceptance checks (action → expected + staging URL), then cross-epic interaction tests wherever footprints overlapped. Pause/resume markers are visible, never silent.</p></div>
+  </div>
+<pre><code>$ caffeinate -s claude -p "/orchestrator:run" --output-format json
+  → scope? first 5 epics → [checkout-v2, search, … ] confirm
+  → fold prior feedback · plan · build ×N worktrees
+  → verify (tests · browser · acceptance · judges) · merge queue
+  → morning digest: <span class="c-tl">3 merged</span> · <span class="c-am">1 escalated (auth)</span> · 1 blocked</code></pre>
+</section>
+
+<section id="safety">
+  <div class="eyebrow">The floor that never moves</div>
+  <h2>Safety model</h2>
+  <p class="lead">Two tiers: core guarantees can't be switched off by any profile or mode; the rest apply when the orchestrator runs. Autonomy never trades away a control — it moves the human gate (to scope-at-launch, plan approval, and high-risk), it doesn't remove it.</p>
+  <div class="grid g2">
+    <div class="card"><h3><span class="ic">🔑</span>Secrets stay secret <span class="pill p-core">core</span></h3><p>Three independent walls (gitignore + deny rules + secret-guard hook), working with variable names, never values. In unattended CI the fail-closed egress firewall is the control — nothing can phone out.</p></div>
+    <div class="card"><h3><span class="ic">🚫</span>No self-elevation <span class="pill p-core">core</span></h3><p>It cannot edit the file defining its own permissions, nor the guardrail hooks or allow-listed scripts it runs. It must not rewrite its own referee. One documented Bash-redirection gap stays open deliberately — the real fences are plan-mode, the sandbox, and PR review.</p></div>
+    <div class="card"><h3><span class="ic">✋</span>Reads before it writes <span class="pill p-core">core</span></h3><p>Plan-mode by default — it proposes before it writes — and every MCP server is approved one by one.</p></div>
+    <div class="card"><h3><span class="ic">🧹</span>Git hygiene</h3><p>Can't skip git safety checks (<code>--no-verify</code>), can't force-push main, can't quietly edit CI files, lockfiles, or accepted ADRs (supersede instead).</p></div>
+    <div class="card"><h3><span class="ic">🔒</span>Main is gated <span class="pill p-mod">orchestrator</span></h3><p>Gated: nothing reaches main without your per-PR OK + green checks. Run-to-completion: low-risk auto-merges after DoD + judges + the CODEOWNERS double gate; high-risk escalates. Workers only push throwaway <code>orch/*</code> branches.</p></div>
+    <div class="card"><h3><span class="ic">🧪</span>Risky changes: a second gate <span class="pill p-mod">orchestrator</span></h3><p>Big diffs or anything touching auth / payments / migrations / infra are auto-flagged, need a security-auditor pass to be merge-eligible, and CODEOWNERS forces a human review at the forge — risk gated twice, independently.</p></div>
+    <div class="card"><h3><span class="ic">📦</span>Unattended runs are boxed in <span class="pill p-mod">orchestrator</span></h3><p>Egress-locked devcontainer + the native OS sandbox, under the loop's own permission profile; your everyday committed settings are never touched.</p></div>
+    <div class="card"><h3><span class="ic">🛑</span>Escalation is the default</h3><p>Unknown risk classifies <b>high</b> (fail closed); a crashed consistency checker keeps the deploy gate shut; a red post-merge suite auto-reverts.</p></div>
+  </div>
+<pre><code><span class="c-dim">// orchestrator/risk-policy.json — data the operator owns; re-read every run</span>
+{ "linesChanged": { "low": 150, "medium": 600 },        <span class="c-dim">// &gt; medium ⇒ high</span>
+  "highRiskPaths": ["**/auth/**","**/payment/**","**/migrations/**","**/infra/**",".github/workflows/**"],
+  "autoMergeRiskLevels": ["low"],                        <span class="c-dim">// only these merge unattended</span>
+  "requiredReviewByRisk": { "low":"judge-panel", "high":"human-codeowners" } }</code></pre>
+</section>
+
+<section id="agents">
+  <div class="eyebrow">The specialists</div>
+  <h2>Agents — who does what</h2>
+  <p class="lead">The loop delegates to focused subagents, each with a restricted toolset and a model matched to the job. The load-bearing ones for autonomy: <b>design-reviewer</b> (gates plans and DoDs), <b>security-auditor</b> (the second gate on risky merges), <b>integration-checker</b> (verifies merged overlapping epics still work together).</p>
+  <div class="twrap"><table>
+    <thead><tr><th>Agent</th><th>Plugin</th><th>Model</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr><td><code>code-reviewer</code></td><td>core</td><td><span class="pill p-son">sonnet</span></td><td>Proactively after any significant change — correctness, conventions, simplicity. Reports, never edits.</td></tr>
+      <tr><td><code>debugger</code></td><td>core</td><td><span class="pill p-son">inherit</span></td><td>A bug resists first diagnosis — reproduce / isolate / root-cause with evidence.</td></tr>
+      <tr><td><code>architect</code></td><td>core</td><td><span class="pill p-opus">opus</span></td><td>A structural decision → options + an ADR draft. Never contradicts an accepted ADR silently.</td></tr>
+      <tr><td><code>design-reviewer</code></td><td>core</td><td><span class="pill p-opus">opus</span></td><td>Before freezing a spec/plan/DoD — adversarial critique; READY / READY-WITH-FIXES / NEEDS-REWORK.</td></tr>
+      <tr><td><code>docs-writer</code></td><td>core</td><td><span class="pill p-hai">haiku</span></td><td>Doc layer drift — CODEMAP, STACK, CHANGELOG, ROADMAP consistency.</td></tr>
+      <tr><td><code>planner</code></td><td>orchestrator</td><td><span class="pill p-opus">opus</span></td><td>Decomposes initiatives into epics + authors each DoD. Never writes product code, never self-approves.</td></tr>
+      <tr><td><code>integration-checker</code></td><td>orchestrator</td><td><span class="pill p-son">sonnet</span></td><td>Overlapping epics merged → verifies the combined result still meets each epic's criteria.</td></tr>
+      <tr><td><code>security-auditor</code></td><td>workbench</td><td><span class="pill p-opus">opus</span></td><td>Before sensitive merges — OWASP, secrets, personal data; required for high-risk PRs.</td></tr>
+      <tr><td><code>refactorer</code></td><td>workbench</td><td><span class="pill p-son">sonnet</span></td><td>Mass mechanical change in an isolated worktree.</td></tr>
+      <tr><td><code>researcher</code></td><td>workbench</td><td><span class="pill p-son">sonnet</span></td><td>External knowledge with sources, in the background.</td></tr>
+      <tr><td><code>test-runner</code></td><td>workbench</td><td><span class="pill p-son">sonnet</span></td><td>Runs the suite, analyzes failures; never fixes.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout"><span class="lbl">Rules of thumb</span><p>Parallel only if files are disjoint — read-only agents parallelize safely; writers get worktrees. Vague invocation is failure mode #1 — exact paths + a success criterion, always. Below ~3 independent subtasks, coordination costs more than it gains.</p></div>
+</section>
+
+<section id="state">
+  <div class="eyebrow">Memory</div>
+  <h2>The state layer</h2>
+  <p class="lead">Sessions, specs, epics, plans and status all go through one CLI contract with a pluggable backend — plain sharded files in the repo (<code>none</code>, zero-setup) or your real board (GitHub Projects / GitLab / Jira / Linear / Notion / Trello adapters).</p>
+<pre><code><span class="c-dim"># the contract — same ops on every backend</span>
+orch state health                         <span class="c-dim"># backend reachable / auth OK</span>
+orch state push-session &lt; session.json    <span class="c-dim"># end-of-session snapshot</span>
+orch state pull-session                   <span class="c-dim"># startup injection reads here</span>
+orch state push-epic · push-status        <span class="c-dim"># one file per epic — no shared table</span>
+orch state pull-status                    <span class="c-dim"># aggregated AT READ TIME</span>
+orch state pull-feedback                  <span class="c-dim"># ALWAYS from the forge (gh/glab)</span>
+orch state push-digest --date D &lt; d.html  <span class="c-dim"># the daily report</span></code></pre>
+  <div class="grid g2">
+    <div class="card"><h3><span class="ic">🧩</span>Sharded, not shared</h3><p>One small file per branch/epic — two parallel workers never write the same file, and git merges them with zero conflicts (property-tested). Status aggregates at read time.</p></div>
+    <div class="card"><h3><span class="ic">✉️</span>State ≠ feedback</h3><p>Tasks can live anywhere, but approvals are always read from the code host, never the board. Signals only count from trusted authors (owner/member/collaborator).</p></div>
+    <div class="card"><h3><span class="ic">🏛️</span>The board outlives the loop</h3><p>Chosen once at scaffold, reused when you enable autonomy, left fully intact when you disable it.</p></div>
+    <div class="card"><h3><span class="ic">🛟</span>Fail-open injection</h3><p>At session start it reads local → remote (with a timeout) → cache — a slow board never stalls a session; a corrupt state file is skipped loudly, never blanks the board.</p></div>
+  </div>
+</section>
+
+<section id="commands">
+  <div class="eyebrow">Reference</div>
+  <h2>Command reference</h2>
+  <div class="twrap"><table>
+    <thead><tr><th>Skill</th><th>When</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><code>/core:new-project</code></td><td>once, at adoption</td><td>Questionnaire (profile, backend, stack, vault, forge, sandbox) → scaffolds contract docs, config, state layer, DoD schema → verifies green → proposes <code>chore: initialize</code> + the plugin install commands.</td></tr>
+      <tr><td><code>/core:handoff</code></td><td>end of session</td><td>Pushes the session snapshot (status, failed attempts, blockers, next steps) to the state layer.</td></tr>
+      <tr><td><code>/core:spec</code></td><td>before non-trivial work</td><td>Rough idea → reviewed spec + task checklist in <code>conception/</code> before any code.</td></tr>
+      <tr><td><code>/core:codemap</code> · <code>/core:doc-health</code></td><td>weekly-ish</td><td>Coupling rules + macro view upkeep; read-only health report on docs + state.</td></tr>
+      <tr><td><code>/core:triage-suggestions</code></td><td>when the queue fills</td><td>Human-gated triage of machine-proposed findings: accept → Backlog ticket, reject → Cancelled.</td></tr>
+      <tr><td><code>/orchestrator:enable-orchestrator</code></td><td>once</td><td>Six verified preconditions → runtime + schedule + risk policy + digest delivery → dry run. Reversible.</td></tr>
+      <tr><td><code>/orchestrator:kickoff</code></td><td>daily, each morning</td><td>Reads your per-PR signals, risk-checks + merges OK'd PRs (revert on red), queues rework, plans new epics behind your live approval, partitions, detaches.</td></tr>
+      <tr><td><code>/orchestrator:plan</code></td><td>inside run, or standalone</td><td>Initiative → epics with validated DoDs: planner authors → validate-dod → independent design review → persist.</td></tr>
+      <tr><td><code>/orchestrator:run</code></td><td>run-to-completion</td><td>Scope confirm → build/verify/improve until each DoD passes → risk-gated serial merge queue → digest. Guards bound everything.</td></tr>
+      <tr><td><code>/orchestrator:disable-orchestrator</code></td><td>anytime</td><td>Removes the loop; preserves the board, digests, and committed settings.</td></tr>
+      <tr><td><code>/ci:setup</code> · <code>/workbench:db-migration</code></td><td>as needed</td><td>Forge PR-assistant workflows; migration with tested downgrade.</td></tr>
+    </tbody>
+  </table></div>
+<pre><code><span class="c-dim"># run the harness's own test suite (20 suites, 321 assertions)</span>
+bash tests/run-tests.sh</code></pre>
+</section>
+
+<section id="verified">
+  <div class="eyebrow">Provenance</div>
+  <h2>Tests &amp; verified deviations</h2>
+  <p class="lead">Every subsystem shipped test-first, in this order — each green before the next: ① the DoD contract + independent verifier, ② the planner, ③ the driver + concurrency + guards, ④ risk-gated auto-merge + safety wiring, ⑤ packaging + docs. Before building, each design was checked against the July 2026 state of the art; the deltas live in <a href="docs/DEVIATIONS.md"><code>docs/DEVIATIONS.md</code></a>.</p>
+  <div class="grid g2">
+    <div class="card"><h3><span class="ic">⚖️</span>Judge panel, decorrelated</h3><p>Same-model majority votes ≈ one judge (correlated-errors research), so each lens pins a distinct model; ties and zero votes always fail.</p></div>
+    <div class="card"><h3><span class="ic">🔐</span>Risk fails closed</h3><p>Risk is computed from the real git diff; a missing policy, unknown branch, or unreadable diff classifies <b>high</b> — nothing merges on a shrug. (Fixes a reference-implementation gap where the loop hardcoded low.)</p></div>
+    <div class="card"><h3><span class="ic">🎫</span>Auth lanes, verified</h3><p>Subscription lane first: <code>claude setup-token</code> → <code>CLAUDE_CODE_OAUTH_TOKEN</code> (~1 year), never combined with <code>--bare</code> (which skips OAuth). <code>ANTHROPIC_API_KEY</code> is the metered lane and takes precedence — leave it unset otherwise.</p></div>
+    <div class="card"><h3><span class="ic">🏖️</span>Native sandbox on top</h3><p>Claude Code's OS sandbox (write-scoping, credential deny, network allowlist) is enabled in the unattended profile, in addition to the devcontainer's egress firewall.</p></div>
+  </div>
+  <div class="callout"><span class="lbl">If you build one thing first</span><p>Build the definition-of-done contract and its independent verifier before the fancy driver. The loop is easy; a trustworthy "done" is the hard, valuable part. Once an epic can be proven finished by something other than its author, everything else — concurrency, auto-merge, scheduling — is plumbing you add incrementally, gate by gate.</p></div>
+</section>
+
+<footer>
+  ◆ The Overnight Harness — distilled from an overnight-coding harness field manual and verified against the July 2026 state of the art.
+  Build one, run it a night, then tighten the gate that scared you most.
+</footer>
+
+</main>
+</div>
+
+<script>
+  /* Theme toggle */
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var el=document.documentElement;
+    var light=el.getAttribute('data-theme')==='light';
+    if(light){el.removeAttribute('data-theme');localStorage.setItem('harness-theme','dark');}
+    else{el.setAttribute('data-theme','light');localStorage.setItem('harness-theme','light');}
+  });
+  /* Active nav highlight */
+  var links=[].slice.call(document.querySelectorAll('nav.side a.nl'));
+  var secs=links.map(function(a){return document.querySelector(a.getAttribute('href'))}).filter(Boolean);
+  function onScroll(){
+    var y=window.scrollY+90,cur=secs[0];
+    secs.forEach(function(s){if(s.offsetTop<=y)cur=s;});
+    links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+cur.id)});
+  }
+  addEventListener('scroll',onScroll,{passive:true});onScroll();
+</script>
+</body>
+</html>
