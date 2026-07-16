@@ -1,7 +1,9 @@
 {
   "name": "core",
   "description": "Core harness: the /new-project scaffolder + handoff, codemap, doc-health, spec, triage-suggestions, project-conventions skills; architect/code-reviewer/debugger/design-reviewer/docs-writer agents; security + hygiene hooks (secret-guard, protect-paths, block-no-verify, growth-detection, session inject/precompact, handoff-reminder, notify); the orch state layer. Always install this first.",
-  "version": "1.0.0",
-  "author": { "name": "lambertbouley" },
+  "version": "1.1.0",
+  "author": {
+    "name": "lambertbouley"
+  },
   "license": "MIT"
 }

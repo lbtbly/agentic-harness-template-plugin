@@ -82,35 +82,46 @@ say so plainly and defer the token step until the loop is enabled.
 3. Record in `orchestrator/state.config.json`:
    `{ "backend": "notion", "forge": "<existing>", "notion": { "databaseId": "<id>" } }`.
 
-## DO — Jira
+## DO — Jira (native semantics — ADR-0021)
+
+Model: orchestrator epic → a real Jira **Epic** (`epicIssueType`, default
+`Epic`); work items → **child issues** (`childIssueType`, default `Task`)
+linked via `parent` (a record carrying `"parent": "<epicId>"` is a child);
+lifecycle state → **real Jira statuses applied as workflow TRANSITIONS**,
+through a configurable `statusMap`. The EXACT orchestrator state always lives
+in the epic-record JSON in the description; the Jira status is the coarse,
+human/board view. Labels remain the identification (`orch-epic`/`orch-child`)
+and the FALLBACK lane (`orch-state-*`) whenever a status is unmapped, missing,
+or unreachable — a mis-mapped board degrades to labels, never breaks the loop.
 
 1. Resolve the project from the user-provided URL (the connector cannot create
    projects — see above), then **ask the fork**: was this project **freshly
    created just for this** (empty, dedicated to the harness), or is it an
    **existing project with real work in it**?
-2. **Fresh, dedicated project → full adaptation.** Shape it for the
-   orchestrator, in this order and only as far as the active lane allows:
-   - **Statuses**: create the 12 lifecycle statuses project-scoped
-     (team-managed: `POST /rest/api/3/statuses` on the token lane) and map the
-     board columns to them in lifecycle order. The MCP connector has no
-     status/column tools — on the MCP-only lane, print the exact UI steps
-     instead (Project settings → Board → Columns: add each state in order).
-   - **Issue type**: ensure a `Task`-like type exists for epics (it does by
-     default on team-managed); note the type the adapter will use.
-   - **Labels stay authoritative regardless**: the adapter always writes
-     `orch-epic` + `orch-state-<State>` (+ `orch-complexity-*`) and the JSON
-     payload in the description — statuses/columns are the human mirror, so a
-     half-adapted project still works, just with a poorer board view.
-3. **Existing, lived-in project → strictly additive coexistence.** Its
-   **schema belongs to the team — never modify it**: no new statuses, no
-   workflow edits, no issue-type changes. The adapter's label convention
-   coexists safely with real work (labels + description payload on orch-created
-   issues only); offer quick filters on `orch-state-*` for a board-ish view,
-   and run the audit (below) limited to access, searchability, and an available
-   issue type. If the user wants full adaptation anyway, tell them to create a
-   dedicated project instead — cheaper than negotiating a shared workflow.
+2. **Statuses are created MANUALLY — the API/connector cannot create statuses
+   or reconfigure the board/workflow.** Print the exact steps and wait:
+   - team-managed board: **"+" adds a column (= a status)** · **double-click a
+     column header to rename** · **drag headers to reorder** into lifecycle order;
+   - company-managed: statuses/workflow via Jira admin → Workflows.
+   Fresh dedicated project → recommend one column per lifecycle state (all 12).
+   Lived-in project → **never modify the team's schema** (statuses, workflows,
+   issue types belong to them): map many-to-one onto the statuses that already
+   exist and skip this step entirely.
+3. **Recommend a default `statusMap`** (12 keys; many-to-one allowed) and let
+   the user edit it. Fresh project: the identity map onto the 12 new columns.
+   Lived-in stock board (e.g. Idea/To Do/In Progress/Testing/Done):
+   `Suggested→Idea · Backlog/Needs-plan/Planned/Blocked/Paused→To Do ·
+   In-progress→In Progress · Needs-review/Changes-requested→Testing ·
+   Approved/Merged/Cancelled→Done`.
 4. Record in `orchestrator/state.config.json`:
-   `{ "backend": "jira", "forge": "<existing>", "jira": { "projectKey": "<KEY>" } }`.
+   `{ "backend": "jira", "forge": "<existing>", "jira": { "projectKey": "<KEY>",
+   "epicIssueType": "Epic", "childIssueType": "Task", "statusMap": { … } } }`.
+5. **Validate**: `orch state health` checks every statusMap target against the
+   project's REAL statuses and warns per missing one — re-run it after the
+   manual column step until it reports none missing. A workflow is a graph:
+   even an existing status may be unreachable from some current status; the
+   adapter attempts one direct transition and falls back to the `orch-state-*`
+   label for that update (logged), so a gap is visible, never fatal.
 
 ## ADOPT an existing board — audit, then fix or guide
 
