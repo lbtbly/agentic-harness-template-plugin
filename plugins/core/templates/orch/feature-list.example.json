@@ -1,0 +1,28 @@
+{
+  "epic": "checkout-v2",
+  "contract": "It is unacceptable to remove or edit tests/steps or to add/delete features. Only flip `passes` to true after a real end-to-end pass.",
+  "acceptanceCriteria": [
+    { "id": "ac1", "statement": "user can pay with a saved card", "automated": true },
+    { "id": "ac2", "statement": "a failed payment shows an actionable error, never a blank screen", "automated": false }
+  ],
+  "testLevels": { "unit": true, "integration": true, "e2e": true },
+  "epicTests": ["tests/checkout/pay.e2e.ts"],
+  "designRefs": ["docs/design/checkout.png"],
+  "features": [
+    {
+      "id": "f1",
+      "description": "pay with saved card",
+      "steps": ["open /checkout", "choose saved card", "confirm"],
+      "expected": "order confirmed, receipt shown",
+      "passes": false
+    },
+    {
+      "id": "f2",
+      "description": "declined card surfaces a retryable error",
+      "steps": ["open /checkout", "choose saved card that will be declined", "confirm"],
+      "expected": "inline error with a retry action; no order created",
+      "passes": false,
+      "blindspots": ["bank 3DS popup is a native window the browser tool may not see"]
+    }
+  ]
+}

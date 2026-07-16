@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "feature-list.schema.json",
+  "title": "feature_list",
+  "description": "Per-epic anti-drift contract. JSON (models corrupt it less than Markdown). It is the SINGLE source of truth for whether an epic is done — the agent never judges its own global termination; this file does. HARD PROHIBITION: it is unacceptable to remove or edit a feature's steps/expected, or to add/delete features to make a build look complete. The ONLY permitted mutation is flipping a feature's `passes` from false to true, and only after that feature's `steps` were driven end-to-end (like a user) and produced `expected`.",
+  "type": "object",
+  "required": ["epic", "contract", "acceptanceCriteria", "testLevels", "features"],
+  "additionalProperties": false,
+  "properties": {
+    "epic": { "type": "string", "description": "epic id this list belongs to" },
+    "contract": {
+      "type": "string",
+      "const": "It is unacceptable to remove or edit tests/steps or to add/delete features. Only flip `passes` to true after a real end-to-end pass."
+    },
+    "acceptanceCriteria": {
+      "type": "array",
+      "minItems": 1,
+      "description": "PM-lens checkable statements of intent for this epic. The acceptance stage and the judge pm lens assert these.",
+      "items": {
+        "type": "object",
+        "required": ["id", "statement", "automated"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "statement": { "type": "string", "description": "a single, verifiable statement of required behavior/value" },
+          "automated": { "type": "boolean", "description": "true if checked by an assertion/test; false if judge-evaluated" }
+        }
+      }
+    },
+    "testLevels": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "which test levels this epic's DoD requires; all required levels must be green (never weakened).",
+      "required": ["unit", "integration", "e2e"],
+      "properties": {
+        "unit": { "type": "boolean" },
+        "integration": { "type": "boolean" },
+        "e2e": { "type": "boolean" }
+      }
+    },
+    "epicTests": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "test files/globs authored FOR this epic (test-first during planning) that must pass as part of the DoD"
+    },
+    "designRefs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "paths/URLs to design intent (screenshots, Figma) the judge design lens compares the built UI against"
+    },
+    "features": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "description", "steps", "expected", "passes"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "description": { "type": "string", "description": "what the user can do" },
+          "steps": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" },
+            "description": "user-level E2E actions to perform in a real browser/session — NOT unit-test names"
+          },
+          "expected": { "type": "string", "description": "observable outcome that proves the feature works" },
+          "passes": { "type": "boolean", "description": "starts false; flip to true ONLY after driving `steps` and observing `expected`" },
+          "blindspots": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "known-invisible surfaces (e.g. native OS modals the browser tool cannot see) — flagged in the digest, never silently passed"
+          }
+        }
+      }
+    }
+  }
+}

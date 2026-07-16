@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# validate-dod <epic-record.json> <feature_list.json>
+# Exit 0 = DoD structurally complete; 1 = incomplete (one reason/line on stderr); 2 = usage/jq error.
+# The DoD (not the agent) is the termination authority — this enforces its shape.
+set -uo pipefail
+[ $# -eq 2 ] || { echo "usage: validate-dod <epic-record.json> <feature_list.json>" >&2; exit 2; }
+command -v jq >/dev/null 2>&1 || { echo "validate-dod: jq required" >&2; exit 2; }
+rec="$1"; fl="$2"; err=0
+note(){ echo "validate-dod: $1" >&2; err=1; }
+
+jq -e . "$rec" >/dev/null 2>&1 || { echo "validate-dod: epic record not valid JSON: $rec" >&2; exit 1; }
+jq -e . "$fl"  >/dev/null 2>&1 || { echo "validate-dod: feature_list not valid JSON: $fl" >&2; exit 1; }
+
+# --- epic record: enough for the loop to build, order, and risk-classify it ---
+for f in id title footprint; do
+  jq -e --arg f "$f" 'has($f)' "$rec" >/dev/null 2>&1 || note "epic record missing .$f"
+done
+jq -e '.footprint|type=="array" and length>=1' "$rec" >/dev/null 2>&1 || note "epic record .footprint must be a non-empty array (drives wave partitioning)"
+
+# --- feature_list: the anti-drift contract ---
+jq -e '.contract|type=="string" and test("unacceptable to remove or edit")' "$fl" >/dev/null 2>&1 || note "feature_list contract const missing or edited"
+jq -e '.features|type=="array" and length>=1' "$fl" >/dev/null 2>&1 || note "feature_list needs >=1 feature"
+jq -e '.acceptanceCriteria|type=="array" and length>=1' "$fl" >/dev/null 2>&1 || note "acceptanceCriteria must be a non-empty array"
+jq -e '.testLevels|has("unit") and has("integration") and has("e2e")' "$fl" >/dev/null 2>&1 || note "testLevels must declare unit/integration/e2e"
+jq -e '[.features[]?|select((has("id") and has("steps") and (.steps|type=="array" and length>=1) and has("expected") and (.passes|type=="boolean"))|not)]|length==0' "$fl" >/dev/null 2>&1 \
+  || note "every feature needs id/steps(non-empty array)/expected/passes(boolean)"
+
+exit $err
