@@ -45,8 +45,10 @@ say so plainly and defer the token step until the loop is enabled.
 3. **Where** (create mode):
    - notion → the parent page (URL or id) the database should be created under,
      and confirm the integration is shared with that page.
-   - jira → site URL (`https://<org>.atlassian.net`), and create a new
-     team-managed Kanban project or reuse an existing one (ask the project key).
+   - jira → **the connector cannot create a new project** (no MCP tool, and
+     `write:jira-work` doesn't cover it) — so even in "create" mode the user
+     provides a project URL. If none exists yet, print the 30-second UI step
+     (team-managed Kanban project) and wait; then ask the fork below.
 4. **Credentials (NAMES only, and only if no MCP connector is available or the
    unattended loop is being enabled)**: notion → `NOTION_TOKEN` (internal
    integration). jira → `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`,
@@ -82,15 +84,32 @@ say so plainly and defer the token step until the loop is enabled.
 
 ## DO — Jira
 
-1. Create (or adopt) the project: team-managed Kanban, the asked key.
-2. States: the adapter tracks lifecycle authoritatively as **labels**
-   (`orch-state-<State>`, plus `orch-complexity-<low|medium|high>` when the
-   planner estimated it) and the JSON payload in the issue description — it
-   never depends on Jira workflow statuses, because team-managed workflow/status
-   creation is not reliably scriptable. For a column-per-state board view,
-   either add the 12 statuses manually via Project settings → Board → Columns
-   (print these exact steps), or use quick filters on the `orch-state-*` labels.
-3. Record in `orchestrator/state.config.json`:
+1. Resolve the project from the user-provided URL (the connector cannot create
+   projects — see above), then **ask the fork**: was this project **freshly
+   created just for this** (empty, dedicated to the harness), or is it an
+   **existing project with real work in it**?
+2. **Fresh, dedicated project → full adaptation.** Shape it for the
+   orchestrator, in this order and only as far as the active lane allows:
+   - **Statuses**: create the 12 lifecycle statuses project-scoped
+     (team-managed: `POST /rest/api/3/statuses` on the token lane) and map the
+     board columns to them in lifecycle order. The MCP connector has no
+     status/column tools — on the MCP-only lane, print the exact UI steps
+     instead (Project settings → Board → Columns: add each state in order).
+   - **Issue type**: ensure a `Task`-like type exists for epics (it does by
+     default on team-managed); note the type the adapter will use.
+   - **Labels stay authoritative regardless**: the adapter always writes
+     `orch-epic` + `orch-state-<State>` (+ `orch-complexity-*`) and the JSON
+     payload in the description — statuses/columns are the human mirror, so a
+     half-adapted project still works, just with a poorer board view.
+3. **Existing, lived-in project → strictly additive coexistence.** Its
+   **schema belongs to the team — never modify it**: no new statuses, no
+   workflow edits, no issue-type changes. The adapter's label convention
+   coexists safely with real work (labels + description payload on orch-created
+   issues only); offer quick filters on `orch-state-*` for a board-ish view,
+   and run the audit (below) limited to access, searchability, and an available
+   issue type. If the user wants full adaptation anyway, tell them to create a
+   dedicated project instead — cheaper than negotiating a shared workflow.
+4. Record in `orchestrator/state.config.json`:
    `{ "backend": "jira", "forge": "<existing>", "jira": { "projectKey": "<KEY>" } }`.
 
 ## ADOPT an existing board — audit, then fix or guide

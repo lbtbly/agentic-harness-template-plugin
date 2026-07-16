@@ -44,9 +44,12 @@ plugin and it does **not** park/compose anything — optional capabilities are a
      and degrade to cache-reads offline — say so.
      **jira/notion follow-up**: create a **new board from the template**, or **adopt an
      existing board** (ask the user to paste its URL — a Notion database link or a Jira
-     project/board link). Record the choice + URL; `/core:board-setup` (step 3) executes it —
-     adopted boards are AUDITED against the template and gaps are fixed automatically or via
-     a hand-off guide, per the user's choice there.
+     project/board link). **Jira always needs a URL** — the connector cannot create
+     projects, so a "new" Jira board means a project the user just created in the UI;
+     board-setup then asks fresh-vs-lived-in and adapts accordingly. Record the choice +
+     URL; `/core:board-setup` (step 3) executes it — adopted boards are AUDITED against
+     the template and gaps are fixed automatically or via a hand-off guide, per the
+     user's choice there.
    - **main stack** — `Node/TS` · `Python` · `Go` · `Rust` (auto-"Other" gets no stack pack).
      "Node/TS" maps to the `typescript.md` pack.
    - **team vault** — `none (local .env)` · `1Password` · `Doppler` · `Infisical`.

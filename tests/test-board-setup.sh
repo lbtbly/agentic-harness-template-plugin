@@ -47,6 +47,12 @@ grep -qi "automatically.*or\|update the board automatically" "$SK"; check "user 
 grep -qi "guide" "$SK"; check "DIY path gets a precise update guide" $?
 grep -qi "ADDITIVE\|never delete.*propert\|never remove.*propert" "$SK"; check "auto-fix is additive-only (never deletes existing properties/options)" $?
 
+# --- Jira caveat: the connector cannot create projects; fresh vs lived-in fork ---
+grep -qi "cannot create.*project" "$SK"; check "skill states the Jira connector cannot create projects (user provides the URL)" $?
+grep -qi "freshly created\|created just for\|dedicated to this" "$SK"; check "skill asks: fresh dedicated project, or existing one with real work" $?
+grep -qi "statuses" "$SK" && grep -qi "issue type" "$SK"; check "fresh Jira projects get full adaptation (statuses, issue types, columns)" $?
+grep -qi "never modif.*schema\|never touch.*schema\|schema.*belongs to the team" "$SK"; check "existing Jira projects: schema untouched, labels-only coexistence" $?
+
 # --- adapters: implemented (no stub exit 64), correct op surface ---
 command -v node >/dev/null 2>&1 || { echo "  skip — node not available for adapter checks"; echo "---"; echo "$PASS ok, $FAIL failure(s)"; exit 0; }
 for A in "$NOTION" "$JIRA"; do
