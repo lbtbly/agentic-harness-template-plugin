@@ -35,8 +35,17 @@ grep -q "Complexity" "$NOTION"; check "pm-notion maps Complexity" $?
 grep -q "orch-complexity-" "$JIRA"; check "pm-jira labels complexity" $?
 grep -q -- "--assignee" "$R/plugins/core/templates/orchestrator/bin/orch"; check "orch push-status supports --assignee" $?
 
-# --- new-project points remote-board users at the skill ---
+# --- new-project: create-from-template vs adopt-existing ---
 grep -q "board-setup" "$NP"; check "new-project points jira/notion backends at /core:board-setup" $?
+grep -qi "existing board" "$NP"; check "new-project asks: new board from template OR an existing board (URL)" $?
+
+# --- adopting an existing board: audit -> auto-fix or DIY guide ---
+grep -qi "existing board" "$SK"; check "board-setup can adopt an existing board by URL" $?
+grep -qi "audit" "$SK"; check "adopted boards are AUDITED against the template contract" $?
+grep -qi "missing" "$SK" && grep -qi "gap" "$SK"; check "audit reports missing columns/properties as gaps" $?
+grep -qi "automatically.*or\|update the board automatically" "$SK"; check "user chooses: fix automatically or do it themselves" $?
+grep -qi "guide" "$SK"; check "DIY path gets a precise update guide" $?
+grep -qi "ADDITIVE\|never delete.*propert\|never remove.*propert" "$SK"; check "auto-fix is additive-only (never deletes existing properties/options)" $?
 
 # --- adapters: implemented (no stub exit 64), correct op surface ---
 command -v node >/dev/null 2>&1 || { echo "  skip — node not available for adapter checks"; echo "---"; echo "$PASS ok, $FAIL failure(s)"; exit 0; }

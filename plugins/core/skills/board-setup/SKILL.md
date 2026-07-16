@@ -37,12 +37,17 @@ say so plainly and defer the token step until the loop is enabled.
 
 1. **Backend**: `notion` · `jira` (or confirm the one already in
    `orchestrator/state.config.json`).
-2. **Where**:
+2. **Mode**: create a **new board from the template**, or **adopt an existing
+   board** — the user pastes its URL and you parse the id out of it (Notion
+   database link → the 32-hex databaseId; Jira link → site + project key from
+   `/browse/KEY-…`, `/projects/KEY` or `/jira/software/projects/KEY/boards/N`).
+   /core:new-project may have already recorded this choice + URL — reuse it.
+3. **Where** (create mode):
    - notion → the parent page (URL or id) the database should be created under,
      and confirm the integration is shared with that page.
    - jira → site URL (`https://<org>.atlassian.net`), and create a new
      team-managed Kanban project or reuse an existing one (ask the project key).
-3. **Credentials (NAMES only, and only if no MCP connector is available or the
+4. **Credentials (NAMES only, and only if no MCP connector is available or the
    unattended loop is being enabled)**: notion → `NOTION_TOKEN` (internal
    integration). jira → `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`,
    `JIRA_PROJECT_KEY`. Tell the user where to set each (shell env / vault / CI
@@ -87,6 +92,39 @@ say so plainly and defer the token step until the loop is enabled.
    (print these exact steps), or use quick filters on the `orch-state-*` labels.
 3. Record in `orchestrator/state.config.json`:
    `{ "backend": "jira", "forge": "<existing>", "jira": { "projectKey": "<KEY>" } }`.
+
+## ADOPT an existing board — audit, then fix or guide
+
+Never assume an existing board matches the contract; never silently rebuild it.
+
+1. **Read the real schema**: notion → `GET /v1/databases/<id>` (or the MCP
+   equivalent) → properties + the State select's options and their order;
+   jira → verify the project resolves and issues are searchable; the label
+   convention needs no schema, so the Jira audit covers access, the `Task`
+   issue type, and (optionally) board columns/quick filters.
+2. **Audit against the template contract** and build a gap report:
+   - State select present, with ALL 12 lifecycle options, in lifecycle order
+     (flag missing options AND wrong order — boards inherit option order);
+   - properties: `Name` (title), `Epic ID` (rich_text), `Assigned to`
+     (rich_text), `Complexity` (select low·medium·high), `PR` (number), `Note`
+     (rich_text), `Created` (created_time), `Edited` (last_edited_time),
+     `Updated` (date) — flag each missing one and any type mismatch.
+3. **Report the gaps** in a compact table (missing / wrong type / out of
+   order), then ask the user (AskUserQuestion): **update the board
+   automatically**, or **do it themselves**?
+   - **Automatic**: idempotent and **ADDITIVE ONLY — never delete, rename, or
+     re-type an existing property or option** (other views/data may hang off
+     them; a type mismatch is reported for the user to resolve, never forced).
+     Add the missing options in lifecycle position, add the missing properties,
+     re-read the schema and show the before/after so the fix is verifiable.
+   - **Themselves**: print a precise, copy-ready **guide** — for each gap: the
+     exact property name, type, and (for selects) the options in order, plus
+     where to click (notion: database `⋯` → Edit properties; the board view
+     columns follow the State option order — drag once if needed. jira:
+     Project settings → Board → Columns, or quick filters on `orch-state-*`).
+     Offer to re-run this audit afterwards to confirm the board is compliant.
+4. Only after the audit passes (or the user accepts the residual gaps) record
+   the board in `state.config.json` and proceed to VERIFY.
 
 ## VERIFY (both)
 
