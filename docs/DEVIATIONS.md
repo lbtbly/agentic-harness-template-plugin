@@ -5,6 +5,14 @@ architecture. Before building each subsystem, its design was checked against cur
 official and practitioner sources. Where a current source improves on or contradicts
 the manual, this file records the deviation and why.
 
+This file is the **research log** (sources, what changed, evidence). The decisions
+themselves are recorded as immutable ADRs in [docs/adr/](adr/): §1 → ADR-0016
+(decorrelated judge panel), §2 → ADR-0018 (gated flavor default), §4 → ADR-0019
+(subscription auth lane), §5 → ADR-0020 (native sandbox + devcontainer); the
+fail-closed risk fix discovered during subsystem 3–4 → ADR-0017. Inherited
+architecture decisions cited by shipped skills (externalized state, phase split,
+run-to-completion, …) are ported as ADR-0001/0007/0008/0009/0011/0012/0013/0015.
+
 ## 1. Judge panel: model diversity added (correlated-judges research)
 
 **Manual says:** four-stage DoD verify ends with an independent judge panel — several
