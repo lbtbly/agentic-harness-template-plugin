@@ -1,0 +1,14 @@
+# Generated to mirror orchestrator/risk-policy.json `highRiskPaths` (ADR-0015).
+# The forge-side half of the double risk-gate: changes to these paths REQUIRE a
+# HUMAN approving review, so the orchestrator's low-risk auto-merge can never land
+# them unattended even if it misclassified. Replace @your-org/reviewers with your
+# real team/handle at /orchestrator:enable-orchestrator, and keep this file
+# in sync with highRiskPaths (the parity test enforces it).
+**/auth/**            @your-org/reviewers
+**/security/**        @your-org/reviewers
+**/migrations/**      @your-org/reviewers
+**/infra/**           @your-org/reviewers
+.github/workflows/**  @your-org/reviewers
+.gitlab-ci.yml        @your-org/reviewers
+**/payment/**         @your-org/reviewers
+**/billing/**         @your-org/reviewers

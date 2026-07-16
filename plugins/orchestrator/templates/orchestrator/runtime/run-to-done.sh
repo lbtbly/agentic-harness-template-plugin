@@ -62,18 +62,56 @@ throttled_cap() {
   esac
 }
 
+# --- risk-gated serial merge queue ---
+RISK_POLICY="${RISK_POLICY:-$R/orchestrator/risk-policy.json}"
+# classify_risk <lines> <paths> — policy data decides; a sensitive-path hit or a
+# big diff makes the epic high-risk regardless of anything else.
+classify_risk() {
+  local lines="$1" paths="$2" lo med
+  lo=$(jq -r '.linesChanged.low' "$RISK_POLICY"); med=$(jq -r '.linesChanged.medium' "$RISK_POLICY")
+  while IFS= read -r p; do [ -n "$p" ] || continue
+    while IFS= read -r g; do case "$p" in ${g//\*\*/*}) echo high; return;; esac
+    done < <(jq -r '.highRiskPaths[]' "$RISK_POLICY")
+  done <<< "$paths"
+  [ "$lines" -gt "$med" ] && { echo high; return; }
+  [ "$lines" -gt "$lo" ]  && { echo medium; return; }
+  echo low
+}
+may_automerge() { jq -e --arg r "$1" '.autoMergeRiskLevels | index($r)' "$RISK_POLICY" >/dev/null 2>&1; }
+# compute_risk <id> — the DEFAULT risk signal: classify the epic's real diff
+# (orch/<id> vs main) against the policy. Fails CLOSED: no policy, no branch,
+# or an unreadable diff all classify as high.
+compute_risk() {
+  local id="$1" stat lines paths
+  [ -f "$RISK_POLICY" ] || { echo high; return; }
+  stat=$(git diff --numstat "main..orch/$id" 2>/dev/null) || { echo high; return; }
+  [ -n "$stat" ] || { echo high; return; }
+  lines=$(echo "$stat" | awk '{a+=$1; d+=$2} END {print a+d+0}')
+  paths=$(echo "$stat" | awk '{print $3}')
+  classify_risk "$lines" "$paths"
+}
+# merge_epic <id> <risk> <verdict-json> — the only function that moves main.
+# done verdict + auto-mergeable risk + green suite after the merge, else revert.
+merge_epic() {
+  local id="$1" risk="$2" verdict="$3"
+  [ "$(echo "$verdict" | jq -r '.done')" = "true" ] || { echo escalated; return; }
+  may_automerge "$risk" || { echo escalated; return; }
+  git checkout -q main || return 1
+  git merge -q --no-ff "orch/$id" -m "merge orch/$id" || { git merge --abort 2>/dev/null; echo escalated; return; }
+  if eval "${SUITE_CMD:-true}"; then echo merged; else git reset -q --hard HEAD~1; echo reverted; fi
+}
+
 # --- engine hooks (overridable via env so the loop is testable with fakes) ---
 build_wave()  { if [ -n "${ORCH_BUILD_CMD:-}" ]; then eval "$ORCH_BUILD_CMD"; else
   claude -p "Run the nightly-orchestrator workflow with args {\"date\":\"$(date +%F)\",\"maxEpics\":${ORCH_MAX_CONCURRENT:-4}}." \
     --settings "$R/orchestrator/settings.orchestrator.json" ${ORCH_PLUGIN_DIR:+--plugin-dir "$ORCH_PLUGIN_DIR"} --output-format json >/dev/null 2>&1; fi; }
 verify_epic() { if [ -n "${ORCH_VERIFY_CMD:-}" ]; then eval "$ORCH_VERIFY_CMD"; else
   claude -p "Run dod-verify for epic $1; output only the verdict JSON." --output-format json 2>/dev/null | jq -c '.result // .'; fi; }
-# risk: computed per epic BEFORE any merge decision. Default is HIGH — nothing
-# auto-merges until a real classifier (risk-policy.json) says otherwise.
-do_risk()     { if [ -n "${ORCH_RISK_CMD:-}" ]; then eval "$ORCH_RISK_CMD"; else echo high; fi; }
-# merge: default ESCALATE. The risk-gated merge queue (subsystem: auto-merge)
-# overrides this with merge_epic; escalation is always the safe fallback.
-do_merge()    { if [ -n "${ORCH_MERGE_CMD:-}" ]; then eval "$ORCH_MERGE_CMD"; else echo escalated; fi; }
+# risk: computed per epic BEFORE any merge decision — from the real diff via
+# compute_risk (which fails closed to high when the policy/diff is unreadable).
+do_risk()     { if [ -n "${ORCH_RISK_CMD:-}" ]; then eval "$ORCH_RISK_CMD"; else compute_risk "$1"; fi; }
+# merge: the risk-gated queue (merge_epic). Escalation is always the safe path.
+do_merge()    { if [ -n "${ORCH_MERGE_CMD:-}" ]; then eval "$ORCH_MERGE_CMD"; else merge_epic "$1" "$2" "$3"; fi; }
 # spend signal for the budget guard (tokens spent so far; -1/absent = unknown)
 spent_tokens() { if [ -n "${ORCH_SPENT_CMD:-}" ]; then eval "$ORCH_SPENT_CMD" 2>/dev/null | grep -oE '^[0-9]+' | head -1; else echo 0; fi; }
 

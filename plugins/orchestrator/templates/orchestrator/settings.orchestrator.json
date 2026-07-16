@@ -1,0 +1,42 @@
+{
+  "$comment": "HIGH-AUTONOMY profile for UNATTENDED Phase-B runs ONLY (claude -p --settings this-file, inside the sandbox/devcontainer with default-deny egress). The committed team settings.json (plan-mode, bypass disabled) is UNTOUCHED. Isolation + permissions.deny are the HARD controls; the security hooks below are defense-in-depth and resolve via $ORCH_CORE_HOOKS (the runtime exports it to the core plugin's hooks/ dir). The native OS sandbox is enabled on top (DEVIATIONS.md §5); failIfUnavailable stays false because the devcontainer is the outer wall on runners where the OS sandbox is missing. enableAllProjectMcpServers lets the nightly verify step drive the app in a real browser (playwright MCP).",
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "deny": [
+      "Read(./.env)", "Read(./.env.local)", "Read(./.env.development)",
+      "Read(./.env.production)", "Read(./.env.staging)", "Read(./.env.test)",
+      "Read(**/*.pem)", "Read(**/*.key)", "Read(**/secrets/**)",
+      "Edit(./.env)", "Edit(./.env.local)",
+      "Edit(orchestrator/**)", "Write(orchestrator/**)",
+      "Edit(.claude/settings.json)", "Write(.claude/settings.json)",
+      "Bash(git push origin main:*)", "Bash(git push --force:*)",
+      "Bash(git push -f:*)", "Bash(gh pr merge:*)", "Bash(glab mr merge:*)"
+    ],
+    "allow": [
+      "Read(./.env.example)",
+      "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)",
+      "Bash(git checkout:*)", "Bash(git add:*)", "Bash(git commit:*)",
+      "Bash(git merge:*)", "Bash(git push origin orch/*)",
+      "Bash(gh pr create:*)", "Bash(gh pr edit:*)", "Bash(gh pr view:*)", "Bash(gh pr list:*)",
+      "Bash(glab mr create:*)", "Bash(glab mr update:*)", "Bash(glab mr view:*)", "Bash(glab mr list:*)",
+      "Bash(bash tests/run-tests.sh)", "Bash(bash orchestrator/bin/orch:*)",
+      "Bash(bash orchestrator/adapters/deploy.sh:*)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "allowUnsandboxedCommands": false,
+    "failIfUnavailable": false
+  },
+  "enableAllProjectMcpServers": true,
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Read|Edit|Write|Bash",
+        "hooks": [{ "type": "command", "command": "\"$ORCH_CORE_HOOKS/secret-guard.sh\"" }] },
+      { "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "\"$ORCH_CORE_HOOKS/block-no-verify.sh\"" }] },
+      { "matcher": "Edit|Write",
+        "hooks": [{ "type": "command", "command": "\"$ORCH_CORE_HOOKS/protect-paths.sh\"" }] }
+    ]
+  }
+}

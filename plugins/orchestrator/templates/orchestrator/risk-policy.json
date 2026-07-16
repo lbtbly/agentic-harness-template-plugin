@@ -1,0 +1,12 @@
+{
+  "$comment": "Risk classification for orchestrator PRs — proposed at /orchestrator:enable-orchestrator, EDITABLE ANYTIME (re-read each run, no re-enable needed). Effect: reviewers focus on what this file flags high; OK stays per-PR, never bulk.",
+  "linesChanged": { "low": 150, "medium": 600 },
+  "highRiskPaths": [
+    "**/auth/**", "**/security/**", "**/migrations/**", "**/infra/**",
+    ".github/workflows/**", ".gitlab-ci.yml", "**/payment/**", "**/billing/**"
+  ],
+  "securityAuditorRequiredFor": ["high"],
+  "autoMergeRiskLevels": ["low"],
+  "requiredReviewByRisk": { "low": "judge-panel", "medium": "human", "high": "human-codeowners" },
+  "okIsPerPr": true
+}
