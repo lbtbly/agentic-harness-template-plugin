@@ -94,3 +94,12 @@ history — define a retention policy if epic notes may contain personal data.
   never on a real dev machine (documented community failure mode).
 - **Sandboxing**: for untrusted code use a `.devcontainer/` (OS-level isolation) or the
   `/sandbox` bash sandbox (filesystem + network isolation).
+
+## The four walls of an unattended run
+1. **Deny rules** (`settings.orchestrator.json` permissions) — tool-level.
+2. **Guard hooks** (secret-guard & friends) — fail CLOSED without jq.
+3. **Native OS sandbox** — `sandbox.network.allowedDomains` (mirrors
+   `orchestrator/egress-allowlist.txt`) + `sandbox.credentials` denying model and
+   delivery credentials to tool subprocesses.
+4. **Devcontainer egress firewall** — default-deny iptables from the same
+   allowlist; the outer wall on runners where the OS sandbox is unavailable.

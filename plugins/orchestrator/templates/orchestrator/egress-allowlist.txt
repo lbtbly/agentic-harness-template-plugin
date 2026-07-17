@@ -1,0 +1,12 @@
+# Egress allowlist — the SINGLE source of truth for unattended-run network
+# access. Consumed by BOTH enforcers (keep them in parity — a test checks):
+#   1. .devcontainer/init-firewall.sh   (default-deny iptables, the outer wall)
+#   2. settings.orchestrator.json → sandbox.network.allowedDomains (native sandbox)
+# Extend deliberately: every entry widens the blast radius.
+api.anthropic.com
+github.com
+api.github.com
+codeload.github.com
+registry.npmjs.org
+pypi.org
+files.pythonhosted.org

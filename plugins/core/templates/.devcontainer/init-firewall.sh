@@ -6,7 +6,12 @@
 set -euo pipefail
 
 # Allowlisted egress hosts (extend deliberately — every entry widens the blast radius).
+# Single source of truth: orchestrator/egress-allowlist.txt (also feeds the native
+# sandbox's allowedDomains — parity-tested). The literal default below matches it
+# for scaffolds where the orchestrator payload isn't installed yet.
 ALLOW_HOSTS="api.anthropic.com github.com api.github.com codeload.github.com registry.npmjs.org pypi.org files.pythonhosted.org"
+ALLOWLIST_FILE="${ORCH_EGRESS_ALLOWLIST:-${CLAUDE_PROJECT_DIR:-$(pwd)}/orchestrator/egress-allowlist.txt}"
+[ -f "$ALLOWLIST_FILE" ] && ALLOW_HOSTS=$(grep -v "^#" "$ALLOWLIST_FILE" | tr "\n" " ")
 
 # FAIL CLOSED (audit SEC-C1): unattended runs must not proceed without confirmed
 # containment. Set ORCH_FIREWALL_OPTIONAL=1 only for interactive/dev use.
