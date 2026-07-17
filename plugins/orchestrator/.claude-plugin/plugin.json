@@ -21,5 +21,16 @@
       "name": "core",
       "version": ">=1.3.0"
     }
-  ]
+  ],
+  "userConfig": {
+    "board_token": {
+      "type": "string",
+      "title": "Board API token (Jira or Notion \u2014 the headless adapter lane)",
+      "sensitive": true
+    },
+    "plugin_repo_url": {
+      "type": "string",
+      "title": "Marketplace repo URL the CI runner fetches the plugin from"
+    }
+  }
 }

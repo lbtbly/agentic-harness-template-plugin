@@ -60,3 +60,13 @@ state) — not a session file — is the source of truth.
 Requires the `autonomous` profile, green tests, a staging deploy, the
 egress-firewalled sandbox, branch protection on `main`, and a forge (feedback is
 forge-sourced — a no-forge setup can only stage config, not drive the loop).
+
+## How the workflows execute (honest note)
+
+`workflows/*.js` are **prompt-interpreted specs, not executed JavaScript**: the
+runtime invokes `claude -p "Run the nightly-orchestrator workflow …"` and the
+model interprets `agent()` / `parallel()` / `phase()` / `budget` by convention.
+This is tested at the contract level (see tests/), but the semantics live in the
+model's reading, not a JS engine. A Claude Agent SDK port is the recorded
+follow-up (CONTRIBUTING.md backlog) — it must first verify the subscription-token
+auth lane (ADR-0019).

@@ -112,14 +112,17 @@ const reconciled = await agent(
       }, required: ['planned'] } }
 )
 
-// Right-size the model to the foreseen complexity (design §Runtime/models):
-// workers are Sonnet by default; Opus only for genuinely hard/high-risk epics;
-// effort scales within a tier. A failed non-Opus worker escalates once to Opus.
-function modelFor(complexity) {
-  return complexity === 'high'
-    ? { model: 'opus', effort: 'high' }
-    : { model: 'sonnet', effort: complexity === 'low' ? 'low' : 'medium' }
+// Right-size the model to the foreseen complexity. The ladder is CONFIG, not
+// code (audit D4): the runtime wrapper passes orchestrator/models.config.json
+// as args.models; these literals are only the fallback when it is absent.
+const MODELS = args?.models ?? {
+  low: { model: 'sonnet', effort: 'low' },
+  medium: { model: 'sonnet', effort: 'medium' },
+  high: { model: 'opus', effort: 'high' },
+  escalation: { model: 'opus', effort: 'high' },
+  gardening: { model: 'sonnet', effort: 'low' },
 }
+function modelFor(complexity) { return MODELS[complexity] ?? MODELS.medium }
 
 markPhase('Reconcile', { cleared: (reconciled?.planned ?? []).length, dropped: (reconciled?.dropped ?? []).length })
 const cleared = reconciled?.planned ?? []
@@ -207,7 +210,7 @@ if (planned.length) {
         && capRemaining() > MIN_BUDGET_PER_EPIC) {
       log(`build ${e.id}: first attempt not green on ${pick.model} — escalating to opus/high`)
       const r2 = await agent(workerPrompt(e, true),
-        { label: `build:${e.id}:opus`, phase: 'Build', isolation: 'worktree', model: 'opus', effort: 'high', schema: WORKER_SCHEMA })
+        { label: `build:${e.id}:opus`, phase: 'Build', isolation: 'worktree', model: MODELS.escalation.model, effort: MODELS.escalation.effort, schema: WORKER_SCHEMA })
       if (r2) r = r2
     }
     return r
@@ -342,7 +345,7 @@ if (capRemaining() >= MIN_BUDGET_PER_EPIC && (planned.length < maxEpics || green
      Make only small, safe changes; run the full suite; commit as ONE commit and open a
      SMALL PR (body: what & why). NEVER push to main, NEVER merge. If nothing is worth
      doing, do nothing and report skipped:true. Return JSON: {done, pr, skipped, summary}.`,
-    { label: 'gardening', phase: 'Gardening', isolation: 'worktree', model: 'sonnet', effort: 'low', schema: {
+    { label: 'gardening', phase: 'Gardening', isolation: 'worktree', model: MODELS.gardening.model, effort: MODELS.gardening.effort, schema: {
         type: 'object', properties: {
           done: { type: 'boolean' }, pr: { type: ['number','string','null'] },
           skipped: { type: 'boolean' }, summary: { type: 'string' } }, required: ['done'] } }

@@ -1,0 +1,23 @@
+{
+  "$comment": "The model ladder is CONFIG, not code (external audit D4): run-with-limits.sh / run-to-done.sh pass this map to the nightly workflow as args.models. Aliases track releases (opus\u2192Opus 4.8, sonnet\u2192Sonnet 5). Candidates to evaluate on your subscription: `fable` (Claude Fable 5, CC \u22652.1.170) for the high/escalation lanes \u2014 positioned for long-horizon autonomous work.",
+  "low": {
+    "model": "sonnet",
+    "effort": "low"
+  },
+  "medium": {
+    "model": "sonnet",
+    "effort": "medium"
+  },
+  "high": {
+    "model": "opus",
+    "effort": "high"
+  },
+  "escalation": {
+    "model": "opus",
+    "effort": "high"
+  },
+  "gardening": {
+    "model": "sonnet",
+    "effort": "low"
+  }
+}

@@ -31,6 +31,10 @@ symlink.
 - Projects scaffolded by /core:new-project are first-class only under Claude
   Code; other agents see no instruction file. Teams needing multi-tool support
   should NOT adopt the autonomous profile of this harness.
-- Revisit when a portable enforcement standard (hooks-equivalent) exists —
-  the trigger to supersede this ADR, not a reason to pre-emptively split files.
+- Revisit when ANY of these fires (sharpened 2026-07-17): (1) a portable
+  enforcement standard (hooks-equivalent) exists; (2) adoption pressure makes the
+  officially documented `@AGENTS.md` import bridge worth wiring (near-zero cost —
+  one @import line, no duplicate content); (3) Claude Code ships a native AGENTS.md fallback
+  reading mode (community-claimed spring 2026 — VERIFY against the official
+  changelog before acting; unconfirmed at amendment time).
 - README states the position ("Claude Code native, by design").

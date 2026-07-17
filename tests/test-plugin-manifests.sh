@@ -143,6 +143,15 @@ grep -qi "instruction audit" "$R/plugins/core/skills/doc-health/SKILL.md"; check
 grep -q "OTEL" "$R/plugins/core/templates/docs/SCHEDULED-AGENTS.md"; check "SCHEDULED-AGENTS documents the OTel env vars (names only)" $?
 grep -q "OTEL" "$R/plugins/orchestrator/templates/orchestrator/runtime/github-actions.yml"; check "runtime template points at OTel export (optional)" $?
 
+# Wave-3 safe sub-tasks + R11
+grep -q "prompt-interpreted" "$R/plugins/orchestrator/README.md"; check "orchestrator README states workflows are prompt-interpreted specs (D3)" $?
+grep -qi "same family\|cross-family" "$R/docs/adr/0016-decorrelated-judge-panel.md"; check "ADR-0016 wording corrected (D2)" $?
+grep -qi "@AGENTS.md import bridge\|AGENTS.md fallback" "$R/docs/adr/0022-claude-code-native.md"; check "ADR-0022 carries sharpened revisit triggers (D5)" $?
+jq -e . "$R/plugins/orchestrator/templates/orchestrator/models.config.json" >/dev/null 2>&1; check "model ladder externalized to models.config.json (D4)" $?
+grep -q "args?.models" "$R/plugins/orchestrator/workflows/nightly-orchestrator.js"; check "nightly reads the model ladder from args (D4)" $?
+jq -e '.userConfig.board_token.sensitive == true' "$R/plugins/orchestrator/.claude-plugin/plugin.json" >/dev/null 2>&1; check "userConfig: sensitive board_token (keychain) declared (R11)" $?
+grep -q "CLAUDE_PLUGIN_OPTION_BOARD_TOKEN" "$R/plugins/core/skills/board-setup/SKILL.md"; check "board-setup reads the keychain-backed option first (R11)" $?
+
 # the morning report template ships with the ordinal-slot contract
 DT="$R/plugins/orchestrator/templates/orchestrator/digest-template.html"
 [ -f "$DT" ]; check "digest-template.html ships" $?

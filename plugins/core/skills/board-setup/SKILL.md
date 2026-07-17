@@ -28,7 +28,11 @@ Notion page or Jira issue does nothing to the loop.
 **MCP-first (no credentials):** if the session has an Atlassian/Jira or Notion MCP
 connector, use IT for everything this skill does — creating the database/issues,
 setting properties/labels, the verification roundtrip. Do not ask for a token.
-**Token lane (only for the unattended loop):** the `pm-jira.js`/`pm-notion.js`
+**Keychain lane (R11)**: if `CLAUDE_PLUGIN_OPTION_BOARD_TOKEN` is set (the
+orchestrator plugin's `userConfig` — the value lives in the OS keychain, never
+in a file), the headless adapters use it as the board token: export it as
+`NOTION_TOKEN`/`JIRA_API_TOKEN` in the runner env. Prefer it over ad-hoc env
+setup; never echo it. **Token lane (only for the unattended loop):** the `pm-jira.js`/`pm-notion.js`
 adapters run headlessly from cron, where interactive MCP OAuth does not exist
 (ADR-0007) — so the env-var NAMES below become necessary only at
 `/orchestrator:enable-orchestrator` time. Provisioning today needs none of them;

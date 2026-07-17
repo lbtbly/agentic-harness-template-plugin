@@ -14,7 +14,12 @@ adds little. Blocking-dissent rules are independently supported (arXiv 2606.0783
 
 ## Decision
 `dod-verify.js` pins a model per lens (`JUDGE_MODELS`, ≥2 distinct models across
-the panel — enforced by `tests/test-dod-verify.sh`). The tally keeps strict
+the panel — enforced by `tests/test-dod-verify.sh`). Precision (amended
+2026-07-17 after external review): this decorrelates **lenses** and, partially,
+**models** — the panel remains a single model FAMILY, and correlated-error
+research applies per family, so full decorrelation would require cross-family
+judges (an external-model bridge; deliberately not adopted — extra API keys and
+injection surface). The panel is "partially decorrelated", not "decorrelated". The tally keeps strict
 majority + zero blocking objections, and fails closed on ties and zero votes.
 A single strong evaluator with hard per-criterion thresholds (Anthropic's 2026
 harness follow-up) is an acceptable operator alternative.
