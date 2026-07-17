@@ -14,7 +14,7 @@ PAGE = os.path.join(ROOT, "START_HERE.html")
 
 # What the viewer can browse: everything shippable + the tests + key docs.
 INCLUDE_DIRS = ["plugins", "tests", ".claude-plugin", "docs", "tools"]
-INCLUDE_FILES = ["README.md", ".gitignore"]
+INCLUDE_FILES = ["README.md", ".gitignore", "AUDIT.md"]
 SKIP_NAMES = {".DS_Store"}
 MAX_FILE_BYTES = 200_000  # safety net; nothing in the repo approaches this
 
