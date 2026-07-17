@@ -3,6 +3,10 @@
 <!-- No `paths:` frontmatter → loaded every session, like the contract. Keep it
      SHORT (context cost). Detail + stack-specific rules: docs/CODE-STANDARDS.md
      and .claude/rules/<lang>.md (added by /core:new-project). -->
+<!-- Rule metadata (optional, recommended): a rule line may end with
+     `(since: <why/when it was added>, expires: <condition to remove it>)`.
+     Rules without an expiry accumulate forever — /core:doc-health's
+     instruction audit flags stale/contradictory ones for triage. -->
 
 - **Think first** — state assumptions, surface tradeoffs, ask before guessing; don't hide confusion.
 - **Goal-driven** — define the success criterion up front, then loop until it verifies.

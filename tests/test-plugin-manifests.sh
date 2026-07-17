@@ -78,6 +78,10 @@ else
   check "no stale template-* namespace in shipped files" 0
 fi
 
+# instruction hygiene (lecture 04): rule metadata convention + audit check
+grep -q "expires:" "$R/plugins/core/templates/rules/code-standards.md"; check "rules template documents the since/expires metadata convention" $?
+grep -qi "instruction audit" "$R/plugins/core/skills/doc-health/SKILL.md"; check "doc-health runs an instruction audit (stale/contradictory/expired rules)" $?
+
 # observability: OTel documented (names only), never shipped as infra
 grep -q "OTEL" "$R/plugins/core/templates/docs/SCHEDULED-AGENTS.md"; check "SCHEDULED-AGENTS documents the OTel env vars (names only)" $?
 grep -q "OTEL" "$R/plugins/orchestrator/templates/orchestrator/runtime/github-actions.yml"; check "runtime template points at OTel export (optional)" $?

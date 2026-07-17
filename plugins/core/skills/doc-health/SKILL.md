@@ -23,7 +23,13 @@ Produce a report (in the conversation, or in docs/reports/ if requested):
    no epic movement for 14 days (legacy: conception/*.md untouched).
 7. **Status consistent?** `orch state pull-status`: "In-progress" epics with no
    movement (ts) for 14 days.
-8. **Changelog fragments piling up?** `changelog.d/*.md` count > 15 → propose
+8. **Instruction audit** (rules are dependencies — remove unused ones): for
+   each rule in CLAUDE.md's hard constraints and `.claude/rules/*.md`, flag:
+   (a) rules whose `expires:` condition is met; (b) rules with no `since:`/
+   `expires:` metadata added > 90 days ago (candidates for triage, not
+   auto-removal); (c) pairs that contradict each other or an accepted ADR.
+   Report only — removal goes through a human (rule 5 of DDPC).
+9. **Changelog fragments piling up?** `changelog.d/*.md` count > 15 → propose
    an assemble/release.
 
 Format: ✅ / ⚠️ / ❌ per check, then prioritized recommended actions.
