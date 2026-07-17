@@ -83,7 +83,7 @@ plugins/core/                     scaffolder, guard hooks, state layer, review a
 plugins/orchestrator/             the loop: skills, planner, workflows, runtime, risk policy
 plugins/workbench/                security-auditor + extra specialists
 plugins/formatting/  plugins/ci/  small opt-ins
-tests/                            24 suites (counts are minimums); run: bash tests/run-tests.sh
+tests/                            27 suites (counts are minimums); run: bash tests/run-tests.sh
 docs/DEVIATIONS.md                verified deviations from the field manual
 ```
 
