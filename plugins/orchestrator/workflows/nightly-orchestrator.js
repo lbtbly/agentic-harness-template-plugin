@@ -51,6 +51,17 @@ const maxEpics = args?.maxEpics ?? 4
 const CAP = budget.total ?? args?.budgetTokens ?? null
 const capRemaining = () => (CAP ? Math.max(0, CAP - budget.spent()) : Infinity)
 
+// Observability lives in the harness, not the agent: token deltas are measured
+// here per phase (budget.spent() snapshots) and returned with the summary —
+// never reconstructed from what agents print (lecture 11 / DEVIATIONS audit).
+const phaseMetrics = []
+let _phaseSpent = budget.spent()
+function markPhase(phase, extra = {}) {
+  const now = budget.spent()
+  phaseMetrics.push({ phase, tokens: now - _phaseSpent, ...extra })
+  _phaseSpent = now
+}
+
 // ---- Phase: Reconcile -------------------------------------------------------
 phase('Reconcile')
 const reconciled = await agent(
@@ -110,6 +121,7 @@ function modelFor(complexity) {
     : { model: 'sonnet', effort: complexity === 'low' ? 'low' : 'medium' }
 }
 
+markPhase('Reconcile', { cleared: (reconciled?.planned ?? []).length, dropped: (reconciled?.dropped ?? []).length })
 const cleared = reconciled?.planned ?? []
 const planned = cleared.slice(0, maxEpics)
 const deferred = cleared.slice(maxEpics).map(e => e.id)
@@ -203,6 +215,7 @@ if (planned.length) {
   results.push(...built.filter(Boolean))
 }
 log(`${results.length}/${planned.length} workers returned; green: ${results.filter(r => r.testsGreen).length}`)
+markPhase('Build', { workers: results.length, green: results.filter(r => r.testsGreen).length })
 
 // ---- Phase: Blocked-check — non-progress backstop (never loop an epic forever) --
 // Every epic that did NOT land green tonight had a full attempt (sonnet, escalated
@@ -239,6 +252,7 @@ for (const e of stalled) {
   if (decision?.blocked) blocked.push(decision)
 }
 if (blocked.length) log(`blocked ${blocked.length} epic(s) after ${BLOCK_AFTER_ATTEMPTS} attempts: ${blocked.map(b => b.id).join(', ')} — escalated`)
+markPhase('Blocked-check', { blocked: blocked.length })
 
 // ---- Phase: Integrate — SERIALIZED (Cursor's integrator-bottleneck lesson) --
 phase('Integrate')
@@ -257,6 +271,8 @@ for (const r of results.filter(r => r.done && r.testsGreen)) {
   )
   if (ok) integrated.push({ ...r, integrated: ok.ok, failure: ok.failure })
 }
+
+markPhase('Integrate', { integrated: integrated.filter(r => r.integrated).length })
 
 // ---- Phase: Consistency — only where overlaps were flagged (scoped, no bottleneck)
 phase('Consistency')
@@ -282,6 +298,8 @@ if (overlapping.length) {
   log('no overlapping epics — consistency check scoped out (footprints disjoint)')
 }
 
+markPhase('Consistency', { pass: consistency?.pass ?? null })
+
 // ---- Phase: Deploy — integration branch (ALL epics) → one staging env -------
 phase('Deploy')
 const greenCount = integrated.filter(r => r.integrated).length
@@ -302,6 +320,8 @@ if (greenCount && consistencyOk) {
 } else {
   log(`deploy skipped (green integrations: ${greenCount}, consistencyOk: ${consistencyOk}${consistency === null && overlapping.length ? ' — checker did not run: gate stays CLOSED' : ''})`)
 }
+
+markPhase('Deploy', { deployed: deploy?.deployed ?? false })
 
 // ---- Phase: Gardening — the "20% cleanup" lane (entropy control) ------------
 // Reserve one slot for entropy control rather than only features: run when the
@@ -331,6 +351,8 @@ if (capRemaining() >= MIN_BUDGET_PER_EPIC && (planned.length < maxEpics || green
   log('gardening lane skipped (no spare slot/budget this run)')
 }
 
+markPhase('Gardening', { ran: !!gardening })
+
 // ---- Phase: Digest — immutable daily HTML, append on re-run -----------------
 phase('Digest')
 await agent(
@@ -341,6 +363,7 @@ await agent(
    per slot; the CSS activates by slot, don't touch it). Run inputs (JSON): ${JSON.stringify({
      epics: integrated, consistency, deploy, blocked, gardening,
      spent: budget.spent(), budgetTotal: budget.total, dropped: reconciled?.dropped ?? [],
+     phaseMetrics,
    })}. Read orchestrator/state.config.json for backend + forge.
    FLAG in "needs attention": every Blocked epic (from "blocked" — escalated, awaiting
    human triage) AND every feature whose feature_list.json entry has a non-empty
@@ -369,7 +392,10 @@ await agent(
      FILES_CHANGED/ADDED/REMOVED.
    Header: N_EPICS; N_READY = green+integrated and NOT high-risk-awaiting-audit;
    N_ATTENTION = failed/paused/consistency-broken/high-risk-awaiting-audit. Overview
-   panel: consistency verdict+evidence, deploy detail, deferred/paused (resume time).
+   panel: consistency verdict+evidence, deploy detail, deferred/paused (resume time),
+   plus a compact RUN METRICS block from "phaseMetrics" — one line per phase
+   (phase · tokens · key count) — and one VCR line: verified/activated epics this run
+   (green-integrated ÷ workers dispatched; a VCR < 1 means under-finished work).
    SCREENSHOTS: the build workers saved verification shots under
    docs/reports/nightly/${today}/shots/<epicId>/. In each epic's panel fill the
    "Screenshots" gallery — one <figure> per shot, src RELATIVE (shots/<epicId>/<file>),
@@ -397,4 +423,5 @@ return {
   blocked: blocked.map(b => b.id),
   gardeningPr: gardening?.pr ?? null,
   tokensSpent: budget.spent(),
+  phases: phaseMetrics,
 }

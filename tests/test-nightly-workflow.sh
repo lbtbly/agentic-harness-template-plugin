@@ -38,6 +38,9 @@ grep -qi "record.*complexity\|complexity.*from the epic record\|epic record.s co
 grep -q -- "--assignee" "$W"; check "workers set/clear the assignee on the card" $?
 grep -q "capRemaining" "$W"; check "hard budget cap enforced per epic" $?
 grep -q "push-digest" "$W"; check "digest pushed to the state layer" $?
+grep -q "phaseMetrics" "$W"; check "per-phase metrics collected by the harness (not the agent)" $?
+grep -q "phases: phaseMetrics" "$W"; check "run summary returns the phases array" $?
+grep -qi "VCR" "$W"; check "digest surfaces the verified/activated ratio (VCR)" $?
 grep -qi "screenshot" "$W"; check "workers capture screenshots of what was built (when relevant)" $?
 grep -q '"evidence"' "$W"; check "flipping passes records evidence (the proof rides the contract)" $?
 grep -q 'docs/reports/nightly/${today}/index.html' "$W"; check "digest written to the per-day folder (index.html)" $?

@@ -78,6 +78,10 @@ else
   check "no stale template-* namespace in shipped files" 0
 fi
 
+# observability: OTel documented (names only), never shipped as infra
+grep -q "OTEL" "$R/plugins/core/templates/docs/SCHEDULED-AGENTS.md"; check "SCHEDULED-AGENTS documents the OTel env vars (names only)" $?
+grep -q "OTEL" "$R/plugins/orchestrator/templates/orchestrator/runtime/github-actions.yml"; check "runtime template points at OTel export (optional)" $?
+
 # the morning report template ships with the ordinal-slot contract
 DT="$R/plugins/orchestrator/templates/orchestrator/digest-template.html"
 [ -f "$DT" ]; check "digest-template.html ships" $?

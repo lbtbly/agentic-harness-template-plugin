@@ -30,3 +30,12 @@
 - Reports go to `docs/reports/` (created on first use); never schedule
   a destructive action.
 - `ANTHROPIC_API_KEY`: machine/runner environment, never in the crontab.
+
+## Observability (optional — names only, no infra shipped)
+Claude Code exports OpenTelemetry metrics/events natively; the harness never
+relies on agents printing their own logs (the nightly run already returns
+per-phase token metrics in its summary + digest). To export to your collector,
+set these env vars on the runner (values live in your vault/CI, never here):
+- `CLAUDE_CODE_ENABLE_TELEMETRY=1`
+- `OTEL_METRICS_EXPORTER` / `OTEL_LOGS_EXPORTER` (e.g. `otlp`)
+- `OTEL_EXPORTER_OTLP_ENDPOINT` (+ `OTEL_EXPORTER_OTLP_HEADERS` if needed)

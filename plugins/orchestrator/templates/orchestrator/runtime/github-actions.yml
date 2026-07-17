@@ -44,6 +44,8 @@ jobs:
       ORCH_MAX_EPICS: '4'
       ORCH_BUDGET_TOKENS: '2000000'             # hard per-night cap (audit L-I1) — tune at enable time
       ORCH_LANE: ${{ github.event.schedule == '0 */2 * * *' && 'retry' || 'nightly' }}
+      # Optional OTel export (docs/SCHEDULED-AGENTS.md — names only):
+      # CLAUDE_CODE_ENABLE_TELEMETRY, OTEL_METRICS_EXPORTER, OTEL_EXPORTER_OTLP_ENDPOINT
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
