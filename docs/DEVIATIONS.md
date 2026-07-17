@@ -100,3 +100,21 @@ outer box for CI runners where the native sandbox may be unavailable.
 officially supported (code.claude.com/docs/en/sub-agents.md). `/reload-plugins` is still
 required after install for hooks/agents/MCP (not for SKILL.md edits) — the manual's
 "reload gotcha" stands.
+
+## 7. Lecture audit (learn-harness-engineering 04–13, 2026-07-17)
+
+The plugin was audited against walkinglabs.github.io/learn-harness-engineering
+lectures 04–13. Verdicts: **equal or better** on 05 (continuity — orch state
+snapshots + PreCompact auto-save beat manual protocols), 07 (overreach —
+one-epic workers + footprint single-writer; WIP=1 applies per worker, worktree
+parallelism is lecture 13's own primitive), 09 (premature victory — 4-stage
+external DoD + decorrelated judges exceed 3-layer validation), 10 (E2E — browser
+-as-user + rules-as-checks), 13 (loop engineering — all six primitives, richer
+guards). **Adopted** from the remaining lectures: day-0 test harness in the
+initializer (L06), verifier-owned `evidence` on the feature contract (L08),
+harness-side per-phase metrics + VCR + OTel env documentation (L11 + L07),
+clean-exit checklist in handoff (L12), rule since/expires metadata + doc-health
+instruction audit (L04). **Explicitly not adopted**: global WIP=1 (worktree
+parallelism + serial merge is strictly better), evaluator letter-grade rubrics
+(majority + blocking dissent is stricter — ADR-0016), harness-emitted OTel
+spans (breaks the zero-dependency posture; docs-only pointer instead).
