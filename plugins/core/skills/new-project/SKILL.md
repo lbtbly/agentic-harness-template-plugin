@@ -99,6 +99,13 @@ plugin and it does **not** park/compose anything — optional capabilities are a
      gitignore `.orch/cache/`. remote → record the backend in `docs/STACK.md`, add the token
      env var NAME to `.env.example` (never a value), set it in `state.config.json`.
 
+3b. **Test harness (day-0 green suite — the initializer must ship a verifiable
+   framework + one passing example test)**: `cp -R "$T/tests" ./tests` (run-tests.sh +
+   smoke.test.sh, chmod +x), run `bash tests/run-tests.sh` and require GREEN before the
+   first commit. Record the command in CLAUDE.md Commands. This is also what
+   /orchestrator:enable-orchestrator's "green test suite" precondition checks on day 0 —
+   epics add their own `tests/*.test.sh` (test-first) next to the smoke test.
+
 4. **Anti-drift feature-list contract** (autonomy guardrail — CLAUDE.md rule 2):
    `mkdir -p .orch/epics` and `cp "$T/orch/feature-list.schema.json" .orch/feature-list.schema.json`.
    Point CLAUDE.md rule 2 at it. Each epic the orchestrator builds gets its own

@@ -21,7 +21,7 @@ _(placeholder — set at /core:new-project: name, one-paragraph purpose, current
 
 ## Commands
 - Build: _(fill in)_
-- Test: _(fill in)_
+- Test: `bash tests/run-tests.sh` (scaffolded smoke + epic tests; add the app suite here)
 - Lint/format: _(fill in — also picked up by formatting's format-on-edit hook)_
 
 ## Verification loop
