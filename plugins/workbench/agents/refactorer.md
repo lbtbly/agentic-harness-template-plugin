@@ -1,6 +1,7 @@
 ---
 name: refactorer
 description: Mass mechanical changes. Use for renames, internal API migrations, module moves too large for the main session. Works in an isolated worktree.
+tools: Read, Grep, Glob, Edit, Write, Bash
 model: sonnet
 isolation: worktree
 maxTurns: 60
