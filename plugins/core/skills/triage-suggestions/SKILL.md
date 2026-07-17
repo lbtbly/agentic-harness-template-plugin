@@ -1,6 +1,6 @@
 ---
 name: triage-suggestions
-description: Human-gated triage of machine-generated suggestions (edge-case flags, growth-detection findings, orchestrator ideas). Accept → Backlog ticket; reject → Cancelled. The mutating counterpart to read-only /core:doc-health (ADR-0011).
+description: Human-gated triage of machine-generated suggestions: accept promotes to a Backlog epic, reject cancels. Use when the Suggested queue has items — the night loop never touches them.
 disable-model-invocation: true
 ---
 

@@ -1,9 +1,14 @@
 ---
 name: codemap
 description: Updates docs/CODEMAP.md (macro view, coupling rules, gotchas) and detects coupling violations. Run after a refactor that changes module boundaries.
+context: fork
+agent: general-purpose
 ---
 
 # /core:codemap
+
+> Runs FORKED (general-purpose agent — it must keep Write for the CODEMAP
+> update); the survey detail stays out of the main context.
 
 1. **Check violations**: for each coupling rule in `.claude/rules/*.md`
    (its `paths:` frontmatter = the scope), grep the imports/references within

@@ -1,9 +1,23 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "ci",
   "description": "CI assistant templates: /setup scaffolds the chosen forge's Claude workflows (PR assistant + auto-review). The nightly orchestrator schedule is NOT here \u2014 that is /orchestrator:enable-orchestrator.",
   "version": "1.1.0",
   "author": {
     "name": "lambertbouley"
   },
-  "license": "MIT"
+  "homepage": "https://github.com/lambertstudi/agentic-harness-template-plugin",
+  "repository": "https://github.com/lambertstudi/agentic-harness-template-plugin",
+  "license": "MIT",
+  "keywords": [
+    "ci",
+    "github-actions",
+    "gitlab"
+  ],
+  "dependencies": [
+    {
+      "name": "core",
+      "version": ">=1.3.0"
+    }
+  ]
 }

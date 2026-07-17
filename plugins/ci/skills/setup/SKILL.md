@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Scaffolds the chosen CI forge's workflow files (GitHub Actions and/or GitLab CI) from the ci plugin into the current project. Run after installing ci; /core:new-project recommends it when a forge was chosen.
+description: Scaffolds the chosen forge's Claude CI workflows (PR assistant + auto-review) from the ci plugin templates. Use after installing ci@harness when a forge was chosen at new-project.
 disable-model-invocation: true
 ---
 

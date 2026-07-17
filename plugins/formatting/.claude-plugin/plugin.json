@@ -1,7 +1,23 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "formatting",
   "description": "Format-on-edit hook: runs the project's formatter/linter after every Edit/Write, turning failures into remediation prompts.",
   "version": "1.0.0",
-  "author": { "name": "lambertbouley" },
-  "license": "MIT"
+  "author": {
+    "name": "lambertbouley"
+  },
+  "homepage": "https://github.com/lambertstudi/agentic-harness-template-plugin",
+  "repository": "https://github.com/lambertstudi/agentic-harness-template-plugin",
+  "license": "MIT",
+  "keywords": [
+    "format",
+    "lint",
+    "hooks"
+  ],
+  "dependencies": [
+    {
+      "name": "core",
+      "version": ">=1.3.0"
+    }
+  ]
 }

@@ -11,27 +11,62 @@
     {
       "name": "core",
       "source": "./plugins/core",
-      "description": "Core harness + /new-project scaffolder, guard hooks, state layer, review agents. Install first."
+      "description": "Core harness + /new-project scaffolder, guard hooks, state layer, review agents. Install first.",
+      "category": "productivity",
+      "keywords": [
+        "scaffold",
+        "harness",
+        "hooks",
+        "dod",
+        "state-layer"
+      ]
     },
     {
       "name": "formatting",
       "source": "./plugins/formatting",
-      "description": "Format-on-edit hook."
+      "description": "Format-on-edit hook.",
+      "category": "productivity",
+      "keywords": [
+        "format",
+        "lint",
+        "hooks"
+      ]
     },
     {
       "name": "orchestrator",
       "source": "./plugins/orchestrator",
-      "description": "The overnight autonomous EPIC loop: plan, build, verify, risk-gated merge, morning digest."
+      "description": "The overnight autonomous EPIC loop: plan, build, verify, risk-gated merge, morning digest.",
+      "category": "automation",
+      "keywords": [
+        "autonomous",
+        "overnight",
+        "orchestrator",
+        "dod",
+        "auto-merge"
+      ]
     },
     {
       "name": "ci",
       "source": "./plugins/ci",
-      "description": "GitHub Actions / GitLab CI assistant templates."
+      "description": "GitHub Actions / GitLab CI assistant templates.",
+      "category": "automation",
+      "keywords": [
+        "ci",
+        "github-actions",
+        "gitlab"
+      ]
     },
     {
       "name": "workbench",
       "source": "./plugins/workbench",
-      "description": "Extra agents (security-auditor, refactorer, researcher, test-runner) + db-migration."
+      "description": "Extra agents (security-auditor, refactorer, researcher, test-runner) + db-migration.",
+      "category": "productivity",
+      "keywords": [
+        "agents",
+        "security-audit",
+        "refactoring",
+        "research"
+      ]
     }
   ]
 }

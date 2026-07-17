@@ -1,10 +1,12 @@
 ---
 name: spec
 description: Spec-first workflow — turn a rough idea into a reviewed spec + task checklist in conception/ before any code. Use before starting a non-trivial feature.
+argument-hint: [topic]
 ---
 
 # /core:spec
 
+0. **Topic**: `$ARGUMENTS` when provided seeds the subject; otherwise ask.
 1. **Clarify** (AskUserQuestion): one round on the essentials — goal & who it's
    for, in-scope vs **out-of-scope**, constraints, and acceptance criteria (how
    we'll know it's done). Don't guess: a vague spec is the #1 agent failure mode.

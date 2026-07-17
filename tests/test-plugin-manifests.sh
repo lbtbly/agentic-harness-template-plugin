@@ -78,6 +78,50 @@ else
   check "no stale template-* namespace in shipped files" 0
 fi
 
+# R7 — every hook entry carries an explicit numeric timeout
+for hp in core formatting; do
+  n_hooks=$(jq '[.hooks[][] | .hooks[]] | length' "$R/plugins/$hp/hooks/hooks.json")
+  n_to=$(jq '[.hooks[][] | .hooks[] | select(.timeout | type == "number")] | length' "$R/plugins/$hp/hooks/hooks.json")
+  [ "$n_hooks" = "$n_to" ] && [ "$n_hooks" != "0" ]; check "plugin $hp: all $n_hooks hook entries carry numeric timeout" $?
+done
+
+# R16 — every agent declares an explicit tools allowlist
+bad=0
+for a in "$R"/plugins/*/agents/*.md; do
+  grep -q "^tools:" "$a" || { echo "         no tools allowlist: $a"; bad=1; }
+done
+check "every agent declares tools: (least privilege)" $bad
+
+# R9/R10 — manifest enrichment + dependency declaration
+for pj in "$R"/plugins/*/.claude-plugin/plugin.json; do
+  jq -e '.["$schema"] and .repository and .keywords' "$pj" >/dev/null 2>&1 || { echo "         missing \$schema/repository/keywords: $pj"; bad2=1; }
+done
+[ -z "${bad2:-}" ]; check "all plugin manifests carry \$schema + repository + keywords" $?
+jq -e '[.plugins[] | select(.category and .keywords)] | length == 5' "$MP" >/dev/null 2>&1; check "marketplace entries carry category + keywords" $?
+for dep in orchestrator formatting ci workbench; do
+  jq -e '.dependencies[0].name == "core"' "$R/plugins/$dep/.claude-plugin/plugin.json" >/dev/null 2>&1 || depmiss=1
+done
+[ -z "${depmiss:-}" ]; check "dependent plugins declare dependencies on core" $?
+
+# R14 — skill descriptions fit the listing budget; args are hinted
+bad3=0
+for sk in "$R"/plugins/*/skills/*/SKILL.md; do
+  len=$(grep -m1 "^description:" "$sk" | wc -c | tr -d " ")
+  [ "$len" -le 205 ] || { echo "         description ${len}c > 200: $sk"; bad3=1; }
+done
+check "every skill description ≤200 chars (listing budget)" $bad3
+grep -q "^argument-hint:" "$R/plugins/orchestrator/skills/run/SKILL.md"; check "run declares argument-hint" $?
+grep -q "^argument-hint:" "$R/plugins/core/skills/spec/SKILL.md"; check "spec declares argument-hint" $?
+
+# R15 — read-only skills mechanically read-only + off-context
+grep -q "^context: fork" "$R/plugins/core/skills/doc-health/SKILL.md" && grep -q "^agent: Explore" "$R/plugins/core/skills/doc-health/SKILL.md"
+check "doc-health runs forked in the read-only Explore agent" $?
+grep -q "^context: fork" "$R/plugins/core/skills/codemap/SKILL.md"; check "codemap runs forked (general-purpose keeps Write)" $?
+
+# R19 — duplicated policy-lib must stay byte-identical
+cmp -s "$R/plugins/core/hooks/policy-lib.sh" "$R/plugins/formatting/hooks/policy-lib.sh"
+check "policy-lib.sh core↔formatting byte-identical (sync test)" $?
+
 # side-effectful skills must not be model-invocable (audit P1-4)
 miss=0
 for sk in core/skills/new-project core/skills/board-setup core/skills/triage-suggestions \

@@ -1,6 +1,6 @@
 ---
 name: kickoff
-description: The DAILY driver of the autonomous loop, run each MORNING right after you've reviewed the overnight PRs. Reads your fresh OK/revise comments, merges the OK'd PRs (and verifies the merged branch), queues the commented ones for rework, adds/plans new EPICs, partitions — then the scheduled build works through the day + overnight.
+description: The daily morning driver: reads per-PR approve/revise signals, risk-gates merges, queues rework, captures notes as rules, plans new epics. Use each morning after review.
 disable-model-invocation: true
 ---
 

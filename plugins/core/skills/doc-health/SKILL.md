@@ -1,9 +1,16 @@
 ---
 name: doc-health
 description: Health report on the documentation + state layer — with no modifications at all. Run weekly or before a work phase.
+context: fork
+agent: Explore
+disallowed-tools: Edit, Write
 ---
 
 # /core:doc-health — STRICTLY READ-ONLY
+
+> Runs FORKED in the read-only `Explore` agent (context: fork): the audit detail
+> never pollutes the main context, and Write/Edit are mechanically denied —
+> the prose rule below is now enforced.
 
 Produce a report (in the conversation, or in docs/reports/ if requested):
 
@@ -29,7 +36,11 @@ Produce a report (in the conversation, or in docs/reports/ if requested):
    `expires:` metadata added > 90 days ago (candidates for triage, not
    auto-removal); (c) pairs that contradict each other or an accepted ADR.
    Report only — removal goes through a human (rule 5 of DDPC).
-9. **Changelog fragments piling up?** `changelog.d/*.md` count > 15 → propose
+9. **`paths:` canary** (community-reported bugs on path-scoped rules): confirm a
+   stack rule (e.g. `.claude/rules/typescript.md`) is loaded ONLY when editing
+   matching paths — if it loads globally or never, note it: the fallback is
+   folding the pack into `code-standards.md` until the CC bug is fixed.
+10. **Changelog fragments piling up?** `changelog.d/*.md` count > 15 → propose
    an assemble/release.
 
 Format: ✅ / ⚠️ / ❌ per check, then prioritized recommended actions.

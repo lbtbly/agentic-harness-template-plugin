@@ -1,6 +1,6 @@
 ---
 name: plan
-description: Turn Needs-plan initiatives into Planned epics with validated DoD contracts. Decompose (planner) -> author feature_list -> independent design-reviewer validation -> persist via orch state. Run inside /orchestrator:run, or standalone to pre-plan a backlog.
+description: Turns Needs-plan initiatives into Planned epics: planner authors the DoD, validate-dod checks it, an independent reviewer gates it. Use inside /orchestrator:run or to pre-plan.
 ---
 
 # /orchestrator:plan

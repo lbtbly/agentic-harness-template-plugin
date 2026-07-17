@@ -118,3 +118,11 @@ instruction audit (L04). **Explicitly not adopted**: global WIP=1 (worktree
 parallelism + serial merge is strictly better), evaluator letter-grade rubrics
 (majority + blocking dissent is stricter — ADR-0016), harness-emitted OTel
 spans (breaks the zero-dependency posture; docs-only pointer instead).
+
+## 8. `paths:`-scoped rules: verified convention, community-reported bugs (2026-07-17)
+
+Stack packs rely on `.claude/rules/*.md` `paths:` frontmatter (officially supported).
+Community trackers report open bugs (anthropics/claude-code #21858, #16299, #17204 —
+rules ignored or loaded globally). Deviation: none — but /core:doc-health now carries
+a manual canary check, and the documented fallback is folding the stack pack into the
+always-loaded code-standards.md if the canary fails on a given CC version.
