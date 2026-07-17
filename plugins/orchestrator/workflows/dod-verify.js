@@ -43,7 +43,9 @@ export async function verifyDoD(epic) {
      holds. Flip "passes" false→true ONLY on a real pass — never edit steps or add/remove features.
      A surface the browser can't see → leave passes:false and record it in "blindspots".
      When a feature has a UI surface, screenshot the observed "expected" state into
-     docs/reports/nightly/<date>/shots/${epic}/<feature-id>.png (visual evidence for the digest).
+     docs/reports/nightly/<date>/shots/${epic}/<feature-id>.png and record that path (or the
+     command output ref for non-UI features) in the feature's "evidence" field as you flip
+     passes — the VERIFIER owns the proof; a passes:true without evidence gets flagged.
      Return {pass, features:[{id,passes,blindspot,screenshot}], reasons:[...]}: pass only if every
      feature passes or is an acknowledged blindspot.`,
     { label: `dod:e2e:${epic}`, schema: { ...STAGE_SCHEMA, properties: { ...STAGE_SCHEMA.properties, features: { type: 'array' } } } })

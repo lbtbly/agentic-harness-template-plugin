@@ -23,6 +23,8 @@ jq -e '.properties.testLevels.properties | has("unit") and has("integration") an
 jq -e '.properties.epicTests.type == "array"' "$SCHEMA" >/dev/null 2>&1; check "epicTests declared (array)" $?
 jq -e '.properties.designRefs.type == "array"' "$SCHEMA" >/dev/null 2>&1; check "designRefs declared (array)" $?
 jq -e '.properties.features.items.properties.blindspots.type == "array"' "$SCHEMA" >/dev/null 2>&1; check "features declare blindspots (array)" $?
+jq -e '.properties.features.items.properties.evidence.type == "string"' "$SCHEMA" >/dev/null 2>&1; check "features declare evidence (string — the verifier's proof of the pass)" $?
+jq -e '.properties.features.items.properties.evidence.description | test("verifier|VERIFIER")' "$SCHEMA" >/dev/null 2>&1; check "evidence is documented as verifier-owned" $?
 jq -e '(.required | index("acceptanceCriteria")) and (.required | index("testLevels"))' "$SCHEMA" >/dev/null 2>&1; check "acceptanceCriteria + testLevels are required" $?
 
 # --- the shipped example is itself a valid contract ---

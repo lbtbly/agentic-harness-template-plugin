@@ -66,6 +66,10 @@
           },
           "expected": { "type": "string", "description": "observable outcome that proves the feature works" },
           "passes": { "type": "boolean", "description": "starts false; flip to true ONLY after driving `steps` and observing `expected`" },
+          "evidence": {
+            "type": "string",
+            "description": "proof of the real pass, recorded by the VERIFIER (not the builder) when passes flips true — a screenshot path (docs/reports/nightly/<date>/shots/…), command output ref, or log excerpt. The harness owns this field; a passes:true without evidence is flagged in the digest."
+          },
           "blindspots": {
             "type": "array",
             "items": { "type": "string" },

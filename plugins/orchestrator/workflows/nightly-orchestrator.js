@@ -155,7 +155,9 @@ if (planned.length) {
           passes:false and record it in "blindspots" so the digest flags it — never
           auto-pass it. WHEN THE FEATURE HAS A UI SURFACE, capture a screenshot of the
           "expected" state you just observed (the browser tool's screenshot) and save it to
-          docs/reports/nightly/${today}/shots/${e.id}/<feature-id>.png — it is the visual
+          docs/reports/nightly/${today}/shots/${e.id}/<feature-id>.png AND record that path
+          (non-UI: the verification command + output ref) in the feature's "evidence" field
+          as you flip passes — the proof rides the contract; it is also the visual
           evidence the digest shows the reviewer and the trace that lets them track the
           evolution day over day. Purely non-visual work (API, migration, tooling): skip,
           and say so in your notes. Never overwrite a previous day's folder. "done" is true ONLY when every feature passes (or is an

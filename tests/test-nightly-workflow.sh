@@ -39,6 +39,7 @@ grep -q -- "--assignee" "$W"; check "workers set/clear the assignee on the card"
 grep -q "capRemaining" "$W"; check "hard budget cap enforced per epic" $?
 grep -q "push-digest" "$W"; check "digest pushed to the state layer" $?
 grep -qi "screenshot" "$W"; check "workers capture screenshots of what was built (when relevant)" $?
+grep -q '"evidence"' "$W"; check "flipping passes records evidence (the proof rides the contract)" $?
 grep -q 'docs/reports/nightly/${today}/index.html' "$W"; check "digest written to the per-day folder (index.html)" $?
 grep -q 'shots/' "$W"; check "screenshots collected under the day folder's shots/" $?
 # serial integration: merges happen one at a time in a for-loop, not parallel()
