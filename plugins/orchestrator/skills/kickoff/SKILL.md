@@ -1,6 +1,6 @@
 ---
 name: kickoff
-description: The daily morning driver: reads per-PR approve/revise signals, risk-gates merges, queues rework, captures notes as rules, plans new epics. Use each morning after review.
+description: "The daily morning driver: reads per-PR approve/revise signals, risk-gates merges, queues rework, captures notes as rules, plans new epics. Use each morning after review."
 disable-model-invocation: true
 ---
 

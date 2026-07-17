@@ -23,7 +23,7 @@ def collect():
     for d in INCLUDE_DIRS:
         base = os.path.join(ROOT, d)
         for dirpath, dirnames, filenames in os.walk(base):
-            dirnames[:] = [x for x in dirnames if x not in SKIP_NAMES]
+            dirnames[:] = sorted(x for x in dirnames if x not in SKIP_NAMES)  # deterministic across OSes
             for f in sorted(filenames):
                 if f in SKIP_NAMES:
                     continue
@@ -45,7 +45,7 @@ def collect():
 def main():
     db = collect()
     # </ must not terminate the script tag from inside a JSON string
-    payload = json.dumps(db, ensure_ascii=False).replace("</", "<\\/")
+    payload = json.dumps(db, ensure_ascii=False, sort_keys=True).replace("</", "<\\/")
     page = open(PAGE, encoding="utf-8").read()
     new_page, n = re.subn(
         r'(<script id="file-db" type="application/json">)(.*?)(</script>)',

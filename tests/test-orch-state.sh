@@ -87,8 +87,8 @@ echo '{"status":"work B"}' | "$O" state push-session >/dev/null
 "$O" state push-status --id E-2 --state Needs-review >/dev/null
 git -C "$TMP" add -A; git -C "$TMP" -c user.email=t@t -c user.name=t commit -qm "B state"
 git -C "$TMP" checkout -q main
-git -C "$TMP" merge -q --no-edit feat/a >/dev/null 2>&1
-git -C "$TMP" merge -q --no-edit feat/b >/dev/null 2>&1; ok "parallel branches merge with zero conflicts (sharded state)" $?
+git -C "$TMP" -c user.email=t@t -c user.name=t merge -q --no-edit feat/a >/dev/null 2>&1
+git -C "$TMP" -c user.email=t@t -c user.name=t merge -q --no-edit feat/b >/dev/null 2>&1; ok "parallel branches merge with zero conflicts (sharded state)" $?
 [ -f "$TMP/.orch/sessions/feat-s-a.json" ] && [ -f "$TMP/.orch/sessions/feat-s-b.json" ]; ok "one session file per branch after merge" $?
 
 # health must DELEGATE to the backend adapter (field-test finding: it used to

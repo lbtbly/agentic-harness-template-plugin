@@ -5,6 +5,15 @@ the marketplace `metadata.version` (per-plugin versions in each plugin.json).
 
 ## [Unreleased]
 
+## [1.4.1] — 2026-07-17
+### Fixed
+- CI's first run caught three real bugs: 7 skill frontmatters were unparseable
+  (unquoted colons from the 1.4.0 description rewrites — they loaded with EMPTY
+  metadata at runtime, silently dropping disable-model-invocation); the
+  parallel-merge test lacked git identity on CI runners; the START_HERE embed
+  payload was platform-dependent (unsorted walk order). New frontmatter-lint
+  suite prevents the first class permanently.
+
 ## [1.4.0] — 2026-07-17
 ### Security
 - Guard hooks FAIL CLOSED when jq is missing (they silently disabled themselves);

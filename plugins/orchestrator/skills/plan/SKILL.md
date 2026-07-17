@@ -1,6 +1,6 @@
 ---
 name: plan
-description: Turns Needs-plan initiatives into Planned epics: planner authors the DoD, validate-dod checks it, an independent reviewer gates it. Use inside /orchestrator:run or to pre-plan.
+description: "Turns Needs-plan initiatives into Planned epics: planner authors the DoD, validate-dod checks it, an independent reviewer gates it. Use inside /orchestrator:run or to pre-plan."
 ---
 
 # /orchestrator:plan

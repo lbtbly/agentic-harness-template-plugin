@@ -1,6 +1,6 @@
 ---
 name: enable-orchestrator
-description: Installs the nightly autonomous loop: verifies the six preconditions, scaffolds the runtime + risk policy, wires the schedule, dry-runs. Use once, after new-project, when ready for autonomy.
+description: "Installs the nightly autonomous loop: verifies the six preconditions, scaffolds runtime + risk policy, wires the schedule, dry-runs. Use once, after new-project, when ready."
 disable-model-invocation: true
 ---
 

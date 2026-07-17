@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Pushes the session snapshot to the state layer: status, failed attempts, blockers, next steps, and a clean-exit check. Use at the end of every session — the Stop hook reminds you.
+description: "Pushes the session snapshot to the state layer: status, failed attempts, blockers, next steps, and a clean-exit check. Use at the end of every session — the Stop hook reminds you."
 ---
 
 # /core:handoff

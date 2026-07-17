@@ -1,6 +1,6 @@
 ---
 name: new-project
-description: Scaffolds or upgrades a project from the core templates: questionnaire, contracts, state layer, day-0 tests, then prints the install commands. Use at adoption or to upgrade.
+description: "Scaffolds or upgrades a project from the core templates: questionnaire, contracts, state layer, day-0 tests, then prints the install commands. Use at adoption or to upgrade."
 disable-model-invocation: true
 ---
 

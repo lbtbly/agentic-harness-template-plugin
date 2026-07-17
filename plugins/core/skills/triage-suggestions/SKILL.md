@@ -1,6 +1,6 @@
 ---
 name: triage-suggestions
-description: Human-gated triage of machine-generated suggestions: accept promotes to a Backlog epic, reject cancels. Use when the Suggested queue has items — the night loop never touches them.
+description: "Human-gated triage of machine-generated suggestions: accept promotes to a Backlog epic, reject cancels. Use when the Suggested queue has items — the night loop never touches them."
 disable-model-invocation: true
 ---
 

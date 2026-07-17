@@ -1,6 +1,6 @@
 ---
 name: run
-description: Launches the run-to-completion loop: confirm scope, build/verify/improve each epic until its DoD passes, auto-merge low-risk, escalate the rest. Use for an unattended run.
+description: "Launches the run-to-completion loop: confirm scope, build/verify/improve each epic until its DoD passes, auto-merge low-risk, escalate the rest. Use for an unattended run."
 argument-hint: [scope — all | first N]
 disable-model-invocation: true
 ---
