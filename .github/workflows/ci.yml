@@ -1,0 +1,64 @@
+# CI for the marketplace itself (external audit R8): the repo that ships CI
+# templates runs CI on itself. Three gates: the test suite, plugin manifest
+# validation, and START_HERE payload drift.
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get update -qq && sudo apt-get install -yqq jq
+      - name: Run the suite
+        run: bash tests/run-tests.sh
+
+  validate-plugins:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Validate every plugin (strict)
+        run: |
+          for p in plugins/*/; do
+            echo "== $p"
+            claude plugin validate "$p" --strict
+          done
+
+  embed-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Regenerate START_HERE payload
+        run: python3 tools/embed-files.py
+      - name: Fail on drift
+        run: git diff --exit-code START_HERE.html || { echo "START_HERE.html payload drifted — run tools/embed-files.py and commit"; exit 1; }
+
+  version-discipline:
+    # R2: any change under plugins/<name>/ must bump that plugin's version
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Changed plugin dirs require version bumps
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          fail=0
+          for p in plugins/*/; do
+            name=$(basename "$p")
+            if ! git diff --quiet "$base" -- "$p"; then
+              if git diff "$base" -- "$p/.claude-plugin/plugin.json" | grep -q '"version"'; then
+                echo "OK: $name changed and bumped"
+              else
+                echo "FAIL: $name changed without a version bump (CONTRIBUTING.md policy)"; fail=1
+              fi
+            fi
+          done
+          exit $fail
