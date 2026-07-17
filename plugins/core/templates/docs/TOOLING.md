@@ -64,3 +64,8 @@ Tests are the primary success signal (non-negotiable rule 5). Beyond tests, for
 non-testable criteria (style, architectural conformance) an LLM-as-judge pass or a
 small eval suite (Braintrust, Inspect AI, DeepEval) is the community-standard
 guardrail. Documentation pointer only — no framework is bundled.
+
+## Published docs
+If any docs/ content is published externally, add an `llms.txt` at the site
+root (a machine-readable index of the published pages) so agents consuming
+your product docs get the same curated entry point humans do.

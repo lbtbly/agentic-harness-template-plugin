@@ -78,6 +78,19 @@ else
   check "no stale template-* namespace in shipped files" 0
 fi
 
+# side-effectful skills must not be model-invocable (audit P1-4)
+miss=0
+for sk in core/skills/new-project core/skills/board-setup core/skills/triage-suggestions \
+          orchestrator/skills/enable-orchestrator orchestrator/skills/disable-orchestrator \
+          orchestrator/skills/kickoff orchestrator/skills/run ci/skills/setup workbench/skills/db-migration; do
+  grep -q "^disable-model-invocation: true" "$R/plugins/$sk/SKILL.md" || { echo "         model-invocable side-effectful skill: $sk"; miss=1; }
+done
+check "all 9 side-effectful skills carry disable-model-invocation: true" $miss
+
+# re-init must be defined, never clobbering (audit P1-5)
+grep -qi "upgrade mode\|adopt/upgrade" "$R/plugins/core/skills/new-project/SKILL.md"; check "new-project defines an upgrade mode for existing scaffolds" $?
+grep -qi "never overwrite" "$R/plugins/core/skills/new-project/SKILL.md"; check "upgrade mode never overwrites personalized files" $?
+
 # instruction hygiene (lecture 04): rule metadata convention + audit check
 grep -q "expires:" "$R/plugins/core/templates/rules/code-standards.md"; check "rules template documents the since/expires metadata convention" $?
 grep -qi "instruction audit" "$R/plugins/core/skills/doc-health/SKILL.md"; check "doc-health runs an instruction audit (stale/contradictory/expired rules)" $?

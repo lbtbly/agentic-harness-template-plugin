@@ -37,6 +37,8 @@ grep -qi "security-auditor" "$KICK"; check "high-risk PR needs a security-audito
 grep -qi "reverted immediately\|revert" "$KICK"; check "red merge is reverted" $?
 grep -qi "never bulk" "$KICK"; check "one signal per PR, never bulk" $?
 grep -qi "approve it live\|approve each new plan\|approval here" "$KICK"; check "plan gate: human approves plans at kickoff" $?
+grep -qi "missing context" "$KICK"; check "kickoff classifies revise notes: plan defect vs missing context" $?
+grep -qi "rule line\|propose.*rule" "$KICK"; check "missing-context notes become proposed rule lines (human-approved)" $?
 
 # --- run: scope confirmation + guards + no unsafe merges ---
 [ -f "$RUN" ]; check "run skill exists" $?

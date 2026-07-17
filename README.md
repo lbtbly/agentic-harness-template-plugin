@@ -7,6 +7,9 @@ knowing when the work is actually **done**.
 Built from the field manual *"The Overnight Harness"*; every subsystem was
 verified against the July 2026 state of the art before implementation
 (see [docs/DEVIATIONS.md](docs/DEVIATIONS.md) for what changed and why).
+**Claude Code native, by design** — the product's edge is the enforcement and
+autonomy layer (hooks, permission profiles, the loop), which only Claude Code
+runs; there is deliberately no AGENTS.md interop (ADR-0022).
 
 ## Install
 
@@ -79,7 +82,7 @@ plugins/core/                     scaffolder, guard hooks, state layer, review a
 plugins/orchestrator/             the loop: skills, planner, workflows, runtime, risk policy
 plugins/workbench/                security-auditor + extra specialists
 plugins/formatting/  plugins/ci/  small opt-ins
-tests/                            317+ assertions; run: bash tests/run-tests.sh
+tests/                            24 suites (counts are minimums); run: bash tests/run-tests.sh
 docs/DEVIATIONS.md                verified deviations from the field manual
 ```
 

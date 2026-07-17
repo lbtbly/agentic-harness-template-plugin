@@ -1,6 +1,7 @@
 ---
 name: new-project
 description: Scaffolds a new project from the core plugin — profile + stack questionnaire, state-backend choice (ADR-0007), docs/policy/state scaffolding, then prints the recommended /plugin install commands. The initializer half of the two-prompt model (this builds the environment once; the nightly loop does the repeating work).
+disable-model-invocation: true
 ---
 
 # /core:new-project (scaffolder)
@@ -14,6 +15,14 @@ plugin and it does **not** park/compose anything — optional capabilities are a
 0. **Execution context** (before anything):
    - Run this **in the target project directory** (empty or an existing repo you want to
      adopt the harness). It writes files into the cwd; it never touches the plugin.
+   - **Existing scaffold → upgrade mode.** If scaffold markers are present (`CLAUDE.md`
+     AND `orchestrator/bin/orch`), this is a re-init over a live project: switch to
+     **adopt/upgrade mode** — add files the templates gained since, and for every file
+     that already exists, DIFF template vs project and **propose** each change;
+     **never overwrite a personalized file** (CLAUDE.md, docs/*, settings, configs are
+     the user's). Skip the questionnaire items already answered (read them back from
+     the scaffold) and re-confirm only what upgrade needs. Everything still lands on a
+     safety branch as one reviewable commit.
    - **Dry run = plan mode.** To preview without changing anything, run under plan mode.
    - Create a **safety branch** first (e.g. `chore/init-project`) so initialization is one
      reviewable, revertible commit.

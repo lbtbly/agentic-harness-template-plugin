@@ -1,6 +1,7 @@
 ---
 name: enable-orchestrator
 description: Installs the nightly autonomous EPIC loop onto the interactive base — preconditions check, runtime + risk-policy setup, schedule. The state backend/board chosen at /core:new-project is REUSED, never re-provisioned.
+disable-model-invocation: true
 ---
 
 # /orchestrator:enable-orchestrator

@@ -1,6 +1,7 @@
 ---
 name: setup
 description: Scaffolds the chosen CI forge's workflow files (GitHub Actions and/or GitLab CI) from the ci plugin into the current project. Run after installing ci; /core:new-project recommends it when a forge was chosen.
+disable-model-invocation: true
 ---
 
 # /ci:setup

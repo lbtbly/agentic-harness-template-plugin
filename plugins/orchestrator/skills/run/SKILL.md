@@ -1,6 +1,7 @@
 ---
 name: run
 description: Launch the autonomous run-to-completion orchestrator — pick scope (all epics in order, or the first N), confirm the named epics, then it builds concurrently and improves each epic until its DoD passes, auto-merging low-risk work and escalating the rest, until the scope is drained or a guard trips (ADR-0015).
+disable-model-invocation: true
 ---
 
 # /orchestrator:run — autonomous run-to-completion

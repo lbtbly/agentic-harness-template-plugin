@@ -1,6 +1,7 @@
 ---
 name: kickoff
 description: The DAILY driver of the autonomous loop, run each MORNING right after you've reviewed the overnight PRs. Reads your fresh OK/revise comments, merges the OK'd PRs (and verifies the merged branch), queues the commented ones for rework, adds/plans new EPICs, partitions — then the scheduled build works through the day + overnight.
+disable-model-invocation: true
 ---
 
 # /orchestrator:kickoff — the daily driver (run it each morning, after review)
@@ -44,6 +45,14 @@ a live human):
    "back from a negative review" state: it's awaiting rework, distinct from
    `In-progress` (a worker actively on it). Tonight's worker folds the notes in;
    minor tweak or full rework, the plan decides.
+4b. **Review→rule capture (the improvement loop)** — classify each revise note:
+   a **plan defect** (this epic got it wrong → rework covers it) or
+   **missing context** (any future worker would make the same mistake — a convention,
+   gotcha, or constraint the environment never told it). For each
+   missing-context note, propose a one-line rule for `.claude/rules/` (with
+   `since:`/`expires:` metadata) or a CODEMAP gotcha — **you approve each
+   proposed rule line** before it's written; skipped proposals are dropped, not
+   remembered. Every recurring review comment is a missing rule.
 5. **Add / plan new EPICs** (in parallel with the reworks) — triage the backlog;
    for each `Needs-plan` epic the `architect` drafts a plan (`design-reviewer` can
    critique), you **approve it live** → `Planned`. Nothing builds without your

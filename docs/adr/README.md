@@ -36,3 +36,4 @@ This repo's own (the verified deviations — research log in [../DEVIATIONS.md](
 - [0019 — Subscription token is the primary headless auth lane](0019-subscription-auth-lane.md)
 - [0020 — Native OS sandbox on top of the devcontainer](0020-native-sandbox-plus-devcontainer.md)
 - [0021 — Native Jira semantics for the state backend (extends 0007)](0021-jira-native-semantics.md)
+- [0022 — Claude-Code-native by design (no AGENTS.md interop)](0022-claude-code-native.md)

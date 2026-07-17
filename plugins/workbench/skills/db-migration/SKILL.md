@@ -1,6 +1,7 @@
 ---
 name: db-migration
 description: Creates and validates a database migration — autogen, local upgrade/downgrade test, doc update. Canonical example of a stack-specific skill.
+disable-model-invocation: true
 ---
 
 # /workbench:db-migration

@@ -1,6 +1,7 @@
 ---
 name: disable-orchestrator
 description: Removes the nightly loop cleanly — schedule, runtime job, loop config. The state backend/board and ALL its data are explicitly PRESERVED (the board outlives the orchestrator — ADR-0007/0008).
+disable-model-invocation: true
 ---
 
 # /orchestrator:disable-orchestrator

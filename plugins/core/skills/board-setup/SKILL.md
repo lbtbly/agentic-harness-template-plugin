@@ -1,6 +1,7 @@
 ---
 name: board-setup
 description: Provisions the epic-lifecycle board on a remote backend (Notion database or Jira project) and wires it into the state layer — run when /core:new-project chose the notion or jira backend, or later to migrate from the none backend. The board it creates is exactly what the pm-notion/pm-jira adapters drive.
+disable-model-invocation: true
 ---
 
 # /core:board-setup — create the board & the epic lifecycle (Notion / Jira)
