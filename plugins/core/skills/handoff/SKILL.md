@@ -8,11 +8,21 @@ description: Pushes the session resume snapshot to the state layer (orch state p
 1. **Collect**: `git branch --show-current`, `git status --porcelain`,
    `git log --oneline -5`; if a test suite exists and is fast,
    run it for the real status.
+1b. **Clean-exit check (advisory, recorded — never silently dropped)**: scan the
+   session's diff for left-behind noise before snapshotting:
+   `git diff HEAD --unified=0 | grep -nE "console\.log|debugger|print\(.*#.*debug|TODO(?![(:].*[)])|^\+\s*//.*(commented.out|XXX)"`
+   (adapt per stack). Build `cleanState`: `{ "build": <pass|fail|not-run>,
+   "tests": <pass|fail|not-run>, "debugArtifacts": ["file:line — what", …] }` —
+   findings are reported in the snapshot and to the user; fixing them now is
+   preferred, but this check never blocks the handoff (the Stop hook stays a
+   reminder, not a gate).
+
 2. **Push the session** (Layer 3 = perishable, no history — ADR-0007). Build the
    snapshot JSON and push it:
    ```bash
    orchestrator/bin/orch state push-session << 'EOF'
    { "branch": "<branch>", "spec": "<spec-id or null>",
+     "cleanState": { "build": "pass", "tests": "pass", "debugArtifacts": [] },
      "status": "<where things stand, factual>",
      "failedAttempts": ["<tried WITHOUT success this session and why — the most
                          valuable section, never empty if any leads failed>"],

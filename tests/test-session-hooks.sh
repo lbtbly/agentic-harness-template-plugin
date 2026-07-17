@@ -51,4 +51,9 @@ NOGIT=$(mktemp -d); export CLAUDE_PROJECT_DIR="$NOGIT"
 assert_exit 0 "$CTX" '{}' "session-context no-op outside git"
 assert_stdout_empty "$INJ" '{}' "inject-session silent without any state"
 unset CLAUDE_PROJECT_DIR; rm -rf "$TMP" "$NOGIT"
+# Gap E (lecture 12): handoff carries an explicit clean-exit checklist
+HS="../plugins/core/skills/handoff/SKILL.md"
+grep -qi "cleanState" "$HS"; ok2=$?; if [ $ok2 -eq 0 ]; then PASS=$((PASS+1)); echo "  ok   — handoff records cleanState in the snapshot"; else FAIL=$((FAIL+1)); echo "  FAIL — handoff records cleanState in the snapshot"; fi
+grep -qi "console.log\|debug" "$HS"; ok2=$?; if [ $ok2 -eq 0 ]; then PASS=$((PASS+1)); echo "  ok   — handoff scans the diff for debug artifacts"; else FAIL=$((FAIL+1)); echo "  FAIL — handoff scans the diff for debug artifacts"; fi
+
 summary
