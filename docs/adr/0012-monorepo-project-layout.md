@@ -5,6 +5,9 @@ Date: 2026-07-06
 
 # ADR-0012 — Monorepo project layout: control-plane at root, product code under `apps/*` + `packages/*`
 
+> ADR-0006: historical, unported — a decision of the reference implementation
+> this repo was distilled from; see docs/adr/README.md.
+
 ## Context
 A composed project has no convention for *where application code lives*. The template
 ships a rich **control-plane** at the repo root — `.claude/`, `docs/`, `orchestrator/`,

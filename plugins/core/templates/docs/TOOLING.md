@@ -41,7 +41,7 @@ still needs explicit per-user approval — so a stub does nothing until you move
 Claude Code keeps an automatic memory under `~/.claude/projects/<project>/memory/`.
 It is personal and outside this repo, so it does not replace the committed layers:
 - Durable, team-facing knowledge still belongs in **Layer 2** (`CODEMAP`, `STACK`, ADRs).
-- Session state still belongs in **Layer 3** (`HANDOFF.md`).
+- Session state still belongs in **Layer 3** (the `orch state` layer; `docs/HANDOFF.md` is only the legacy fallback).
 - Treat auto memory as a scratchpad. It must never capture secret values — the same
   rule as everywhere (`docs/SECURITY.md`). Toggle/inspect it via `/memory`.
 
@@ -50,14 +50,14 @@ Language-agnostic by default (only `jq` is required). For projects that need pin
 runtimes, `/core:new-project` can drop a `.mise.toml` ([mise](https://mise.jdx.dev)) that pins
 node/python/go/rust per project and installs them with `mise install`. It keeps toolchains
 **isolated and reinstallable**, which is especially handy inside git worktrees and sandboxes.
-Template: `plugins/core/skills/new-project/templates/runtime/mise.toml`. Not added unless chosen.
+Template: `plugins/core/templates/.mise.toml (in the core plugin)`. Not added unless chosen.
 
 ## Sandbox / devcontainer (opt-in)
 For higher-autonomy or untrusted-code runs, `/core:new-project` can drop a `.devcontainer/`
 with a **default-deny egress firewall** (`init-firewall.sh`: allowlist only what the agent
 needs, then self-verify the lockdown). This is the safe home for `auto`/bypass-style runs —
 see the sandboxing note in `docs/SECURITY.md`. Template:
-`plugins/core/skills/new-project/templates/devcontainer/`. Not added unless chosen.
+`plugins/core/templates/.devcontainer/ (in the core plugin)`. Not added unless chosen.
 
 ## Evals (agent-output verification)
 Tests are the primary success signal (non-negotiable rule 5). Beyond tests, for

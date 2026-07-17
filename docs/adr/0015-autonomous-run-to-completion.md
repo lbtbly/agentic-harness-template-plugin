@@ -5,6 +5,9 @@ Date: 2026-07-15
 
 # ADR-0015 — Autonomous run-to-completion with risk-gated auto-merge (supersedes the merge-gate clause of ADR-0008)
 
+> ADR-0002 / ADR-0014: historical, unported — decisions of the reference
+> implementation this repo was distilled from; see docs/adr/README.md.
+
 ## Context
 ADR-0008 set the orchestrator invariant: "autonomy adds a build phase, it never removes a
 control" — every merge to `main` required a per-PR human OK at kickoff. That made the human

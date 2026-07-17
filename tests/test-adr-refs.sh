@@ -31,6 +31,17 @@ for f in "$R/docs/adr/"00*.md; do
 done
 check "every ADR carries a Status line" $bad
 
+# dangling ADR references inside docs/adr/ itself must be annotated as historical
+miss=0
+for n in $(grep -rho "ADR-00[0-9][0-9]" "$R/docs/adr" | sort -u | sed 's/ADR-//'); do
+  ls "$R/docs/adr/$n-"*.md >/dev/null 2>&1 && continue
+  # absent ADR: every file citing it must carry the historical annotation
+  for f in $(grep -rl "ADR-$n" "$R/docs/adr" ); do
+    grep -q "historical, unported" "$f" || { echo "         unannotated dangling ADR-$n in $f"; miss=1; }
+  done
+done
+check "dangling ADR refs in docs/adr are annotated as historical" $miss
+
 # DEVIATIONS.md stays the research log and points at the decisions
 grep -q "docs/adr" "$R/docs/DEVIATIONS.md"; check "DEVIATIONS.md points to the ADRs" $?
 

@@ -19,7 +19,7 @@ nightly-orchestrator:
     GIT_DEPTH: '0'
     ORCH_MAX_EPICS: '4'
     ORCH_BUDGET_TOKENS: '2000000'   # hard per-night cap (audit L-I1) — tune at enable time
-    ORCH_PLUGIN_MARKETPLACE_URL: 'https://gitlab.example.com/your-org/claude-code-template.git'  # where the plugin marketplace lives (internal mirror for VPN runners) — set at enable time
+    ORCH_PLUGIN_MARKETPLACE_URL: 'https://gitlab.example.com/your-org/agentic-harness-marketplace.git'  # where the plugin marketplace lives (internal mirror for VPN runners) — set at enable time
     # AUTH (masked+protected CI/CD variables) — ONE lane: CLAUDE_CODE_OAUTH_TOKEN (subscription,
     # from `claude setup-token`; never combine with --bare) OR ANTHROPIC_API_KEY (metered —
     # it takes precedence, leave unset on the subscription lane). Plus GITLAB_TOKEN, GITLAB_HOST.

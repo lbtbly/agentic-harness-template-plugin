@@ -5,6 +5,9 @@ Date: 2026-07-17
 
 # ADR-0022 — Claude-Code-native by design (no AGENTS.md interoperability)
 
+> ADR-0005: historical, unported — the reference implementation's decision;
+> see docs/adr/README.md.
+
 ## Context
 The 2026 baseline for agentic coding environments treats AGENTS.md as the
 canonical cross-tool instruction file (Linux Foundation governance, read by

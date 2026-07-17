@@ -63,6 +63,10 @@ plan-gate, per-PR OK) stays untouched — this ADDS the unattended Phase B on to
    combine with `--bare`) or `ANTHROPIC_API_KEY` (metered), `GH_TOKEN` (GitHub App
    token, not a PAT) or `GITLAB_TOKEN`+`GITLAB_HOST`; plus delivery secrets if
    chosen (`SLACK_WEBHOOK_URL`, `SENDGRID_API_KEY`). Never ask for or write a value.
+10. **Plugin marketplace location**: set the runner variable `ORCH_PLUGIN_REPO_URL`
+   (github: repo *variable*; gitlab: `ORCH_PLUGIN_MARKETPLACE_URL`) to the marketplace
+   repo the runner fetches the orchestrator plugin from — and, ONLY if that repo is
+   private, the secret NAME `ORCH_PLUGIN_REPO_TOKEN` (fine-grained PAT, contents:read).
 
 ## DO
 

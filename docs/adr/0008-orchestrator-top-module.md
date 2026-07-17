@@ -5,6 +5,9 @@ Date: 2026-07-02
 
 # ADR-0008 — Orchestrator as opt-in top module with pluggable runtimes
 
+> ADR-0006: historical, unported — the reference implementation's decision;
+> see docs/adr/README.md.
+
 ## Context
 The nightly agentic orchestrator (`conception/2026-07-01-agentic-orchestrator-design.md`)
 runs several EPICs in parallel, unattended. Two framings competed: a *mode switch*

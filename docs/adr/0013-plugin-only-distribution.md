@@ -5,6 +5,9 @@ Date: 2026-07-15
 
 # ADR-0013 — Plugin-only distribution (supersedes ADR-0002)
 
+> ADR-0002 / ADR-0014: historical, unported — decisions of the reference
+> implementation this repo was distilled from; see docs/adr/README.md.
+
 ## Context
 ADR-0002 chose **dual distribution**: a copy-the-tree standalone kit *and* an additive
 plugin manifest. In practice the standalone path is the source of the exact problem the

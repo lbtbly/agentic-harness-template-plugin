@@ -52,10 +52,23 @@ jobs:
       - name: Install claude + jq + iptables
         run: npm install -g @anthropic-ai/claude-code && apt-get update -qq && apt-get install -yqq jq iptables curl
       - name: Fetch the orchestrator plugin (the nightly workflow lives in it, not the repo)
-        # The orchestrator plugin is not part of the project checkout. Clone
-        # the marketplace repo shallowly and expose the plugin dir to run-with-limits.sh,
-        # which passes it to `claude -p --plugin-dir`. Adjust the URL/ref at enable time.
-        run: git clone --depth 1 https://github.com/lambertstudi/agentic-harness-template-plugin "$RUNNER_TEMP/tmpl"
+        # The orchestrator plugin is not part of the project checkout. Clone the
+        # marketplace repo shallowly and expose the plugin dir to run-with-limits.sh,
+        # which passes it to `claude -p --plugin-dir`.
+        # ORCH_PLUGIN_REPO_URL — repo variable set by /orchestrator:enable-orchestrator
+        #   (e.g. https://github.com/<owner>/<marketplace-repo>).
+        # ORCH_PLUGIN_REPO_TOKEN — repo secret, ONLY if that marketplace repo is
+        #   private: a fine-grained PAT with contents:read on it. Never echoed.
+        env:
+          ORCH_PLUGIN_REPO_URL: ${{ vars.ORCH_PLUGIN_REPO_URL }}
+          ORCH_PLUGIN_REPO_TOKEN: ${{ secrets.ORCH_PLUGIN_REPO_TOKEN }}
+        run: |
+          [ -n "$ORCH_PLUGIN_REPO_URL" ] || { echo "ORCH_PLUGIN_REPO_URL repo variable not set (enable-orchestrator records it)"; exit 1; }
+          CLONE_URL="$ORCH_PLUGIN_REPO_URL"
+          if [ -n "$ORCH_PLUGIN_REPO_TOKEN" ]; then
+            CLONE_URL=$(echo "$ORCH_PLUGIN_REPO_URL" | sed "s|https://|https://x-access-token:${ORCH_PLUGIN_REPO_TOKEN}@|")
+          fi
+          git clone --depth 1 "$CLONE_URL" "$RUNNER_TEMP/tmpl" 2>&1 | sed "s|${ORCH_PLUGIN_REPO_TOKEN:-__none__}|***|g"
       - name: Egress firewall — MUST succeed (fail-closed)
         run: bash .devcontainer/init-firewall.sh
       - name: Phase B with usage-limit resilience
