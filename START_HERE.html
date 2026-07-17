@@ -586,7 +586,7 @@
     "expected":"order confirmed, receipt shown", "passes": <span class="c-am">false</span>
   }]
 }</code></pre>
-  <p class="lead" style="margin-bottom:10px">JSON, not Markdown — models corrupt structured files far less. The <b>only</b> permitted mutation is flipping <code>passes</code> to true after a real pass; editing or deleting steps to look complete is prohibited by contract and enforced by <code>validate-dod</code>.</p>
+  <p class="lead" style="margin-bottom:10px">JSON, not Markdown — models corrupt structured files far less. The <b>only</b> permitted mutation is flipping <code>passes</code> to true after a real pass — and the flip must carry <code>evidence</code> (a screenshot path or output ref, recorded by the <b>verifier</b>, not the builder; a pass without proof is flagged). Editing or deleting steps to look complete is prohibited by contract and enforced by <code>validate-dod</code>.</p>
 
   <div class="grid g2" style="margin-top:8px">
     <div class="card"><h3><span class="ic">1️⃣</span>Tests, every level</h3><p>Unit + integration + e2e, plus the tests authored for this epic; typecheck + lint clean. Never weaken a test to pass — fix the code.</p></div>
@@ -703,7 +703,7 @@
   <h2>The morning report</h2>
   <p class="lead">Not a log to grep — a single, immutable digest written for a human with coffee. One self-contained HTML file per day (<code>docs/reports/nightly/&lt;date&gt;/index.html</code>); a same-day re-run <b>appends</b> a "Run 2" section, never overwrites. Delivered to Slack/email at a time you choose, and persisted to an <code>orch/state</code> branch so a build that finished past midnight still reaches you.</p>
   <div class="grid g2">
-    <div class="card"><h3><span class="ic">✅</span>Per epic</h3><p>Summary + PR link + risk class (low = auto-merged; high = escalated with the reason), the four DoD gate results, and the staging route where it's live to click through.</p></div>
+    <div class="card"><h3><span class="ic">✅</span>Per epic</h3><p>Summary + PR link + risk class (low = auto-merged; high = escalated with the reason), the four DoD gate results, verification screenshots, and the staging route where it's live to click through. The Overview adds <b>run metrics</b> — per-phase token spend measured by the harness itself, never reconstructed from agent logs — and a <b>VCR line</b> (verified ÷ activated; &lt;1 = under-finished work).</p></div>
     <div class="card"><h3><span class="ic">🧭</span>Your ten-minute check</h3><p>The top of the digest is an ordered, human-runnable test sequence: per-epic acceptance checks (action → expected + staging URL), then cross-epic interaction tests wherever footprints overlapped. Pause/resume markers are visible, never silent.</p></div>
   </div>
 <pre><code>$ caffeinate -s claude -p "/orchestrator:run" --output-format json
@@ -807,9 +807,9 @@ orch state push-digest --date D &lt; d.html  <span class="c-dim"># the daily rep
   <div class="twrap"><table>
     <thead><tr><th>Skill</th><th>When</th><th>What it does</th></tr></thead>
     <tbody>
-      <tr><td><code data-file="plugins/core/skills/new-project/SKILL.md">/core:new-project</code></td><td>once, at adoption</td><td>Questionnaire (profile, backend, stack, vault, forge, sandbox) → scaffolds contract docs, config, state layer, DoD schema → verifies green → proposes <code>chore: initialize</code> + the plugin install commands.</td></tr>
+      <tr><td><code data-file="plugins/core/skills/new-project/SKILL.md">/core:new-project</code></td><td>once, at adoption</td><td>Questionnaire (profile, backend, stack, vault, forge, sandbox) → scaffolds contract docs, config, state layer, DoD schema <b>and a day-0 test harness</b> (<code>tests/run-tests.sh</code> + one passing smoke test — the green-suite precondition has a target from day one) → verifies green → proposes <code>chore: initialize</code> + the plugin install commands.</td></tr>
       <tr><td><code data-file="plugins/core/skills/board-setup/SKILL.md">/core:board-setup</code></td><td>at adoption, or later</td><td>Creates the epic-lifecycle board (Notion database / Jira project) via the MCP connector when present — no credentials — or ADOPTS an existing board from its URL: audits it against the template (12 states in lifecycle order, required properties incl. Assigned to, Complexity, Created/Edited), reports the gaps, then fixes them automatically (additive-only, never deletes) or hands you a precise update guide. Tokens are deferred to enable-orchestrator (the headless lane).</td></tr>
-      <tr><td><code data-file="plugins/core/skills/handoff/SKILL.md">/core:handoff</code></td><td>end of session</td><td>Pushes the session snapshot (status, failed attempts, blockers, next steps) to the state layer.</td></tr>
+      <tr><td><code data-file="plugins/core/skills/handoff/SKILL.md">/core:handoff</code></td><td>end of session</td><td>Pushes the session snapshot (status, failed attempts, blockers, next steps, and a <code>cleanState</code> check — build/tests + a debug-artifact scan of the diff) to the state layer.</td></tr>
       <tr><td><code data-file="plugins/core/skills/spec/SKILL.md">/core:spec</code></td><td>before non-trivial work</td><td>Rough idea → reviewed spec + task checklist in <code>conception/</code> before any code.</td></tr>
       <tr><td><code data-file="plugins/core/skills/codemap/SKILL.md">/core:codemap</code> · <code data-file="plugins/core/skills/doc-health/SKILL.md">/core:doc-health</code></td><td>weekly-ish</td><td>Coupling rules + macro view upkeep; read-only health report on docs + state.</td></tr>
       <tr><td><code data-file="plugins/core/skills/triage-suggestions/SKILL.md">/core:triage-suggestions</code></td><td>when the queue fills</td><td>Human-gated triage of machine-proposed findings: accept → Backlog ticket, reject → Cancelled.</td></tr>
@@ -828,7 +828,7 @@ bash tests/run-tests.sh</code></pre>
 <section id="verified">
   <div class="eyebrow">Provenance</div>
   <h2>Tests &amp; verified deviations</h2>
-  <p class="lead">Every subsystem shipped test-first, in this order — each green before the next: ① the DoD contract + independent verifier, ② the planner, ③ the driver + concurrency + guards, ④ risk-gated auto-merge + safety wiring, ⑤ packaging + docs. Before building, each design was checked against the July 2026 state of the art; the deltas live in <a href="docs/DEVIATIONS.md"><code>docs/DEVIATIONS.md</code></a>.</p>
+  <p class="lead">Every subsystem shipped test-first, in this order — each green before the next: ① the DoD contract + independent verifier, ② the planner, ③ the driver + concurrency + guards, ④ risk-gated auto-merge + safety wiring, ⑤ packaging + docs. Before building, each design was checked against the July 2026 state of the art; the deltas live in <a href="docs/DEVIATIONS.md"><code>docs/DEVIATIONS.md</code></a> — including a full audit against the <i>learn-harness-engineering</i> lectures 04–13 (§7: five practices adopted — day-0 harness, verifier-owned evidence, per-phase metrics + VCR, clean-exit checklist, instruction audit — and three rejected with reasons).</p>
   <div class="grid g2">
     <div class="card"><h3><span class="ic">⚖️</span>Judge panel, decorrelated</h3><p>Same-model majority votes ≈ one judge (correlated-errors research), so each lens pins a distinct model; ties and zero votes always fail.</p></div>
     <div class="card"><h3><span class="ic">🔐</span>Risk fails closed</h3><p>Risk is computed from the real git diff; a missing policy, unknown branch, or unreadable diff classifies <b>high</b> — nothing merges on a shrug. (Fixes a reference-implementation gap where the loop hardcoded low.)</p></div>
