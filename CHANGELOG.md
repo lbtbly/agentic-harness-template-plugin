@@ -5,6 +5,25 @@ the marketplace `metadata.version` (per-plugin versions in each plugin.json).
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-07-17
+### Security
+- Guard hooks FAIL CLOSED when jq is missing (they silently disabled themselves);
+  explicit timeouts on every hook (guards 10s vs the 600s default); sandbox
+  credential walls + egress allowlist parity (native sandbox ↔ devcontainer
+  firewall, single source); pinned MCP server list for unattended runs.
+### Added
+- LICENSE (MIT); CI on the marketplace itself (tests, plugin validate, embed
+  drift, version discipline); CONTRIBUTING release policy; manifest discovery
+  metadata + core dependency declarations; keychain-backed userConfig
+  (board_token, plugin_repo_url); policy-gated Stop gate (default OFF); model
+  ladder externalized to models.config.json; verdict.schema.json for
+  schema-validated headless verify; argument-hints + listing-budget skill
+  descriptions; forked read-only doc-health/codemap.
+### Fixed
+- Personal path scrubbed from a shipped template; authenticated parameterized
+  runner clone (private marketplaces); six stale references; refactorer agent
+  least-privilege tools; ADR-0016 decorrelation wording corrected.
+
 ## [1.3.0] — 2026-07-17
 ### Added
 - Market-audit remediation: ADR-0022 (Claude-Code-native by design), upgrade mode in
