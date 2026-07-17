@@ -12,7 +12,7 @@ Codex/Copilot/Cursor and 30+ agents), with CLAUDE.md as a symlink or @import.
 This marketplace ships a single CLAUDE.md and no AGENTS.md — a consequence
 inherited from the reference implementation's decision (its ADR-0005) whose
 rationale was never ported here, leaving the deviation undocumented (flagged
-by the 2026-07-17 market audit, AUDIT.md D1/D10).
+by the 2026-07-17 market-baseline audit, dimensions D1/D10).
 
 ## Decision
 Stay Claude-Code-native, deliberately. The product's edge is not the
