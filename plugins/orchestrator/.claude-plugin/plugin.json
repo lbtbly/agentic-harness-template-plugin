@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "orchestrator",
   "description": "The overnight autonomous EPIC loop: /enable-orchestrator (six verified preconditions), /kickoff (daily driver), /plan (DoD authoring + independent review), /run (run-to-completion with risk-gated auto-merge), /disable-orchestrator; planner + integration-checker agents; dod-verify + nightly-orchestrator workflows; runtime, risk-policy, CODEOWNERS and digest templates.",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "author": {
     "name": "lambertbouley"
   },
@@ -26,11 +26,13 @@
     "board_token": {
       "type": "string",
       "title": "Board API token (Jira or Notion \u2014 the headless adapter lane)",
-      "sensitive": true
+      "sensitive": true,
+      "description": "API token for the Jira/Notion board (headless adapter lane). Stored in the OS keychain; exported as CLAUDE_PLUGIN_OPTION_BOARD_TOKEN."
     },
     "plugin_repo_url": {
       "type": "string",
-      "title": "Marketplace repo URL the CI runner fetches the plugin from"
+      "title": "Marketplace repo URL the CI runner fetches the plugin from",
+      "description": "Marketplace repo URL the CI runner fetches the orchestrator plugin from (feeds ORCH_PLUGIN_REPO_URL)."
     }
   }
 }
