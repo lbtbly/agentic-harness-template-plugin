@@ -109,5 +109,15 @@ summary=$(run_loop all)
 echo "$summary" | jq -e '.stopped_by == "BUDGET"' >/dev/null; check "spend >= budget cap → stopped_by=BUDGET" $?
 unset ORCH_BUDGET_TOKENS ORCH_SPENT_CMD
 
+# --- R12: hardened headless invocations + extracted verdict schema ---
+VS="../plugins/orchestrator/templates/orchestrator/verdict.schema.json"
+jq -e . "$VS" >/dev/null 2>&1; check "verdict.schema.json ships and parses" $?
+jq -e '.required | index("done") and index("escalate")' "$VS" >/dev/null 2>&1; check "verdict schema requires done + escalate" $?
+grep -q -- "--json-schema" "$DRIVER"; check "verify call uses --json-schema (validated structured output)" $?
+grep -q "structured_output" "$DRIVER"; check "driver parses structured_output" $?
+grep -q "ORCH_MAX_TURNS" "$DRIVER"; check "driver caps turns (ORCH_MAX_TURNS)" $?
+grep -q -- "--strict-mcp-config" "$DRIVER"; check "driver pins MCP config (no stray user servers)" $?
+! grep -- "--bare" "$DRIVER" | grep -v "^\s*#" | grep -q .; check "driver never uses --bare (ADR-0019 subscription lane; comments excepted)" $?
+
 rm -rf "$TMP2" "$SAFE"
 echo "---"; echo "$PASS ok, $FAIL failure(s)"; [ "$FAIL" -eq 0 ]

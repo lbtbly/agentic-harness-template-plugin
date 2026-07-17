@@ -56,9 +56,14 @@ fi
 # runs where the plugin is already installed can leave ORCH_PLUGIN_DIR unset.)
 PLUGIN_ARGS=()
 [ -n "${ORCH_PLUGIN_DIR:-}" ] && PLUGIN_ARGS=(--plugin-dir "$ORCH_PLUGIN_DIR")
-OUT=$(claude -p "Run the nightly-orchestrator workflow with args {\"date\":\"$DATE\",\"maxEpics\":${ORCH_MAX_EPICS:-4},\"budgetTokens\":${ORCH_BUDGET_TOKENS:-null}}." \
+MODELS_JSON=$(jq -c . "$R/orchestrator/models.config.json" 2>/dev/null || echo null)
+# Hardened flags (R12): turn cap + optional native USD cap + pinned MCP config.
+# NEVER --bare here (ADR-0019: it breaks the subscription-token lane).
+OUT=$(claude -p "Run the nightly-orchestrator workflow with args {\"date\":\"$DATE\",\"maxEpics\":${ORCH_MAX_EPICS:-4},\"budgetTokens\":${ORCH_BUDGET_TOKENS:-null},\"models\":$MODELS_JSON}." \
   --settings "$R/orchestrator/settings.orchestrator.json" \
   "${PLUGIN_ARGS[@]}" \
+  --max-turns "${ORCH_MAX_TURNS:-200}" ${ORCH_MAX_BUDGET_USD:+--max-budget-usd "$ORCH_MAX_BUDGET_USD"} \
+  --strict-mcp-config --mcp-config "$R/.mcp.json" \
   --output-format json 2>&1)
 STATUS=$?
 [ $STATUS -eq 0 ] && { echo "$OUT" | jq -r '.result // "done"' 2>/dev/null || echo done; exit 0; }

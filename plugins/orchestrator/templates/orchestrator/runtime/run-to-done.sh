@@ -102,11 +102,23 @@ merge_epic() {
 }
 
 # --- engine hooks (overridable via env so the loop is testable with fakes) ---
+# Hardened headless invocations (R12): explicit turn caps, optional native cost
+# cap, pinned MCP config (no stray user servers in an unattended run), and a
+# schema-validated verdict. NEVER --bare — it skips OAuth reads and silently
+# breaks the subscription-token lane (ADR-0019).
+MODELS_JSON() { jq -c . "$R/orchestrator/models.config.json" 2>/dev/null || echo null; }
 build_wave()  { if [ -n "${ORCH_BUILD_CMD:-}" ]; then eval "$ORCH_BUILD_CMD"; else
-  claude -p "Run the nightly-orchestrator workflow with args {\"date\":\"$(date +%F)\",\"maxEpics\":${ORCH_MAX_CONCURRENT:-4}}." \
-    --settings "$R/orchestrator/settings.orchestrator.json" ${ORCH_PLUGIN_DIR:+--plugin-dir "$ORCH_PLUGIN_DIR"} --output-format json >/dev/null 2>&1; fi; }
+  claude -p "Run the nightly-orchestrator workflow with args {\"date\":\"$(date +%F)\",\"maxEpics\":${ORCH_MAX_CONCURRENT:-4},\"models\":$(MODELS_JSON)}." \
+    --settings "$R/orchestrator/settings.orchestrator.json" ${ORCH_PLUGIN_DIR:+--plugin-dir "$ORCH_PLUGIN_DIR"} \
+    --max-turns "${ORCH_MAX_TURNS:-80}" ${ORCH_MAX_BUDGET_USD:+--max-budget-usd "$ORCH_MAX_BUDGET_USD"} \
+    --strict-mcp-config --mcp-config "$R/.mcp.json" \
+    --output-format json >/dev/null 2>&1; fi; }
 verify_epic() { if [ -n "${ORCH_VERIFY_CMD:-}" ]; then eval "$ORCH_VERIFY_CMD"; else
-  claude -p "Run dod-verify for epic $1; output only the verdict JSON." --output-format json 2>/dev/null | jq -c '.result // .'; fi; }
+  claude -p "Run dod-verify for epic $1; return the verdict." \
+    --output-format json --json-schema "$(cat "$R/orchestrator/verdict.schema.json")" \
+    --max-turns "${ORCH_MAX_TURNS:-80}" ${ORCH_MAX_BUDGET_USD:+--max-budget-usd "$ORCH_MAX_BUDGET_USD"} \
+    --strict-mcp-config --mcp-config "$R/.mcp.json" \
+    2>/dev/null | jq -c '.structured_output // .result // .'; fi; }
 # risk: computed per epic BEFORE any merge decision — from the real diff via
 # compute_risk (which fails closed to high when the policy/diff is unreadable).
 do_risk()     { if [ -n "${ORCH_RISK_CMD:-}" ]; then eval "$ORCH_RISK_CMD"; else compute_risk "$1"; fi; }

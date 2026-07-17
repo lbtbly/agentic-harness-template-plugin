@@ -65,4 +65,10 @@ CLAUDE_PROJECT_DIR="$D" "$D/orchestrator/bin/orch" state get-epic --id e1 | jq -
 CLAUDE_PROJECT_DIR="$D" "$D/orchestrator/bin/orch" state get-epic --id e2 | jq -e '.state == "Paused" and (.note | test("from=In-progress"))' >/dev/null; check "In-progress epic paused too (mid-build limit)" $?
 rm -rf "$D"
 
+# R12: wrapper hardening
+grep -q "ORCH_MAX_TURNS" "$WRAP_SRC"; check "wrapper caps turns" $?
+grep -q "ORCH_MAX_BUDGET_USD" "$WRAP_SRC"; check "wrapper supports the native cost cap (optional)" $?
+grep -q -- "--strict-mcp-config" "$WRAP_SRC"; check "wrapper pins MCP config" $?
+! grep -- "--bare" "$WRAP_SRC" | grep -v "^\s*#" | grep -q .; check "wrapper never uses --bare (ADR-0019; comments excepted)" $?
+
 echo "---"; echo "$PASS ok, $FAIL failure(s)"; [ "$FAIL" -eq 0 ]

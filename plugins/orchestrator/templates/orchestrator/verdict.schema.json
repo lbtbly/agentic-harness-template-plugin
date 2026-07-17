@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "dod-verdict",
+  "description": "What verifyDoD(epic) returns \u2014 the merge queue's input. Enforced on the headless verify call via claude -p --json-schema.",
+  "type": "object",
+  "required": [
+    "epic",
+    "done",
+    "escalate",
+    "stages",
+    "blocking",
+    "reasons"
+  ],
+  "properties": {
+    "epic": {
+      "type": "string"
+    },
+    "done": {
+      "type": "boolean"
+    },
+    "escalate": {
+      "type": "boolean"
+    },
+    "stages": {
+      "type": "object"
+    },
+    "blocking": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
