@@ -7,7 +7,8 @@ knowing when the work is actually **done**.
 Built from the field manual *"The Overnight Harness"*; every subsystem was
 verified against the July 2026 state of the art before implementation
 (see [docs/DEVIATIONS.md](docs/DEVIATIONS.md) for what changed and why).
-**Claude Code native, by design** — the product's edge is the enforcement and
+**Platforms:** macOS / Linux / WSL2 — native Windows is unsupported (hooks and the
+state CLI are POSIX shell + jq). **Claude Code native, by design** — the product's edge is the enforcement and
 autonomy layer (hooks, permission profiles, the loop), which only Claude Code
 runs; there is deliberately no AGENTS.md interop (ADR-0022).
 

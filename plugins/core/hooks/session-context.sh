@@ -1,4 +1,5 @@
 #!/bin/bash
+command -v jq >/dev/null 2>&1 || { echo "session-context: jq missing — advisory hook skipped" >&2; exit 0; }
 # SessionStart: orients Claude without burning turns on discovery.
 . "$(dirname "$0")/policy-lib.sh" 2>/dev/null
 cd "${CLAUDE_PROJECT_DIR:-.}" 2>/dev/null || exit 0

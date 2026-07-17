@@ -2,6 +2,7 @@
 # Stop: the safety net against "I close the terminal and forget".
 # If HANDOFF.md > 24h old AND there are uncommitted changes → ask Claude to
 # remind the user about /handoff. stop_hook_active prevents the infinite loop.
+command -v jq >/dev/null 2>&1 || { echo "handoff-reminder: jq missing — advisory hook skipped" >&2; exit 0; }
 INPUT=$(cat)
 [ "$(echo "$INPUT" | jq -r '.stop_hook_active // false' 2>/dev/null)" = "true" ] && exit 0
 . "$(dirname "$0")/policy-lib.sh" 2>/dev/null

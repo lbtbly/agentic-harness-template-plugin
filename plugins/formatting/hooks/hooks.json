@@ -5,7 +5,11 @@
       {
         "matcher": "Edit|Write",
         "hooks": [
-          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/format-on-edit.sh\"" }
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/format-on-edit.sh\"",
+            "timeout": 60
+          }
         ]
       }
     ]

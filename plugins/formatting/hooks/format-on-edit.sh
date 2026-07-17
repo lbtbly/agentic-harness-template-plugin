@@ -3,6 +3,7 @@
 # repo's linter, detected via the NEAREST config from the edited file up to the
 # repo root — works for flat AND monorepo/apps-* layouts (ADR-0012). Agnostic:
 # graceful no-op if nothing is detected. Never blocking.
+command -v jq >/dev/null 2>&1 || { echo "format-on-edit: jq missing — advisory hook skipped" >&2; exit 0; }
 INPUT=$(cat)
 FP=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
 [ -n "$FP" ] && [ -f "$FP" ] || exit 0

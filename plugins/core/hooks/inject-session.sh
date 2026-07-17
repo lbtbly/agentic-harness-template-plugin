@@ -1,4 +1,5 @@
 #!/bin/bash
+command -v jq >/dev/null 2>&1 || { echo "inject-session: jq missing — advisory hook skipped" >&2; exit 0; }
 # SessionStart: injects Layer 3 (session resume) from the state layer
 # (ADR-0007). Fail-open chain — a slow/VPN-gated board must NEVER stall a
 # session start:

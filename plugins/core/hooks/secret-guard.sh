@@ -2,6 +2,8 @@
 # Layer 3 of defense in depth: blocks any access to secret paths,
 # even if .gitignore or the settings.json deny-rules are misconfigured.
 # Exit 2 = hard block, the stderr message is shown to Claude.
+# R6: a guard that cannot parse its input must BLOCK, not silently allow.
+command -v jq >/dev/null 2>&1 || { echo "BLOCKED: secret-guard cannot run — jq is missing (install jq; see docs/SECURITY.md)" >&2; exit 2; }
 INPUT=$(cat)
 TARGET=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.command // empty')
 [ -z "$TARGET" ] && exit 0

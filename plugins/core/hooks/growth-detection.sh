@@ -2,6 +2,7 @@
 # DDPC: Detect (grep), Diagnose (which trigger), Propose (append to
 # SUGGESTIONS.md). Never Confirms — that's the human's job via /doc-health.
 # Never blocking, idempotent per (suggestion, file).
+command -v jq >/dev/null 2>&1 || { echo "growth-detection: jq missing — advisory hook skipped" >&2; exit 0; }
 INPUT=$(cat)
 FP=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
 [ -n "$FP" ] && [ -f "$FP" ] || exit 0

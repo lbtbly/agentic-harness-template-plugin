@@ -1,4 +1,5 @@
 #!/bin/bash
+command -v jq >/dev/null 2>&1 || { echo "precompact-save-state: jq missing — advisory hook skipped" >&2; exit 0; }
 # PreCompact: the context is about to be compacted — mechanical save of the
 # state via the state layer (ADR-0007), legacy HANDOFF.md as fallback.
 # Covers the case the Stop hook does not see.

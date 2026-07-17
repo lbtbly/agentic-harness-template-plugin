@@ -4,6 +4,7 @@
 # always exits 0. Silent in CI / non-interactive and when CLAUDE_NOTIFY_DISABLE
 # is set. Add it to the Stop event too if you want turn-completion pings.
 . "$(dirname "$0")/policy-lib.sh" 2>/dev/null
+command -v jq >/dev/null 2>&1 || { echo "notify: jq missing — advisory hook skipped" >&2; exit 0; }
 INPUT=$(cat)
 NTYPE=$(echo "$INPUT" | jq -r '.notification_type // empty' 2>/dev/null)
 MSG=$(echo "$INPUT" | jq -r '.message // empty' 2>/dev/null)

@@ -3,6 +3,8 @@
 # Guards the project's .claude/settings.json (permissions + plan-mode). The POLICY
 # half of the old combined hook lives in protect-policy-paths.sh. Known limit: Bash
 # redirections are not intercepted — accepted and documented in ADR-0009.
+# R6: a guard that cannot parse its input must BLOCK, not silently allow.
+command -v jq >/dev/null 2>&1 || { echo "BLOCKED: protect-paths cannot run — jq is missing (install jq; see docs/SECURITY.md)" >&2; exit 2; }
 INPUT=$(cat)
 FP=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 [ -z "$FP" ] && exit 0

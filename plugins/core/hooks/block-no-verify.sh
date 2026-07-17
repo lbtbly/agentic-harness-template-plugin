@@ -3,6 +3,8 @@
 # POLICY (opt-in, default ON): git hygiene, not a security boundary. Disable per
 # project via .claude/policy.json {"block_no_verify": false} or env
 # CLAUDE_POLICY_BLOCK_NO_VERIFY=0.
+# R6: a guard that cannot parse its input must BLOCK, not silently allow.
+command -v jq >/dev/null 2>&1 || { echo "BLOCKED: block-no-verify cannot run — jq is missing (install jq; see docs/SECURITY.md)" >&2; exit 2; }
 INPUT=$(cat)
 CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 [ -z "$CMD" ] && exit 0

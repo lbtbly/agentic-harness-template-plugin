@@ -5,6 +5,8 @@
 # (settings*.json self-elevation) lives in protect-paths.sh (CORE).
 # Disable per project: .claude/policy.json {"protect_paths_policy": false}
 #   or env CLAUDE_POLICY_PROTECT_PATHS_POLICY=0.
+# R6: a guard that cannot parse its input must BLOCK, not silently allow.
+command -v jq >/dev/null 2>&1 || { echo "BLOCKED: protect-policy-paths cannot run — jq is missing (install jq; see docs/SECURITY.md)" >&2; exit 2; }
 INPUT=$(cat)
 FP=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 [ -z "$FP" ] && exit 0

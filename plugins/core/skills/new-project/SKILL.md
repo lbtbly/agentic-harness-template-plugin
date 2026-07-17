@@ -1,6 +1,6 @@
 ---
 name: new-project
-description: Scaffolds a new project from the core plugin — profile + stack questionnaire, state-backend choice (ADR-0007), docs/policy/state scaffolding, then prints the recommended /plugin install commands. The initializer half of the two-prompt model (this builds the environment once; the nightly loop does the repeating work).
+description: Scaffolds or upgrades a project from the core templates: questionnaire, contracts, state layer, day-0 tests, then prints the install commands. Use at adoption or to upgrade.
 disable-model-invocation: true
 ---
 
@@ -33,6 +33,10 @@ plugin and it does **not** park/compose anything — optional capabilities are a
      + `packages/<name>/` as npm workspaces — never scaffold an app at the repo root. Record
      the layout in CODEMAP/STACK and make CLAUDE.md Commands workspace-aware.
    - `T="${CLAUDE_PLUGIN_ROOT}/templates"` — the scaffold source for every copy below.
+   - **Preflight (R6/R18)**: `command -v jq git` must both succeed — the guard hooks
+     and state layer need them (guards FAIL CLOSED without jq, by design). Platform:
+     macOS / Linux / WSL2; native Windows unsupported (POSIX shell hooks) — say so
+     and stop rather than scaffolding a broken environment.
 
 1. **Questionnaire.** Ask **fixed-option** items with `AskUserQuestion` (**≤4 options
    each**; nested follow-up when a real choice has >4 branches). Ask **free-text** items as
