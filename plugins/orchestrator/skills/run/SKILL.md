@@ -47,7 +47,12 @@ proof** — clean merge plus a green suite, serial, so each epic is verified aga
 landed before it. Landing is then requested through the forge with `--auto`, leaving branch
 protection, required checks and CODEOWNERS as the enforcer (ADR-0015).
 
-Auto-merge requires **risk-allows AND the epic's class has earned tier `auto`** (ADR-0026).
+Auto-merge requires **the forge able to refuse a bad push AND risk-allows AND the epic's class
+has earned tier `auto`** (ADR-0032 / ADR-0026). Where the forge cannot protect `main` at all —
+a private repo on a free GitHub plan — `risk-policy.json` carries `forgeProtection:
+"unavailable-accepted"` and `may_automerge()` is off at the mechanism: the run completes to
+**PRs, never to `main`**. That is the honest deliverable there, not a degraded one; the merges
+are yours to make.
 Trust is tracked per `<footprint-root>/<complexity>` in `.orch/trust.tsv` and earned by measured
 verified-pass rate; a fresh install has no ledger, so every class is `watch` and nothing merges
 unattended until it has a record. `orchestrator/bin/trust render` shows the table.

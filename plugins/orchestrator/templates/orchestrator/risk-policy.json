@@ -6,6 +6,8 @@
     ".github/workflows/**", ".gitlab-ci.yml", "**/payment/**", "**/billing/**"
   ],
   "securityAuditorRequiredFor": ["high"],
+  "$comment_forgeProtection": "ADR-0032. required = branch protection on main is verified at the forge (default). unavailable-accepted = the forge CANNOT provide it on this plan (GitHub free + private answers 403 'Upgrade to GitHub Pro or make this repository public'; no token shape is branch-scopable) and the operator accepted the exposure — auto-merge is then force-disabled whatever autoMergeRiskLevels says, so every merge stays human. Set at /orchestrator:enable-orchestrator; this field IS the record — do not restate it in prose.",
+  "forgeProtection": "required",
   "autoMergeRiskLevels": ["low"],
   "requiredReviewByRisk": { "low": "judge-panel", "medium": "human", "high": "human-codeowners" },
   "okIsPerPr": true

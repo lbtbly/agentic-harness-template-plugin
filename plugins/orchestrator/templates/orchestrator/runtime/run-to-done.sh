@@ -143,7 +143,18 @@ classify_risk() {
   [ "$lines" -gt "$lo" ]  && { echo medium; return; }
   echo low
 }
-may_automerge() { jq -e --arg r "$1" '.autoMergeRiskLevels | index($r)' "$RISK_POLICY" >/dev/null 2>&1; }
+# forge_protection — ADR-0032. Missing field → `required` (fails closed for policies
+# written before the field existed: they keep today's behavior only if the forge really
+# does protect main, which enable-orchestrator verified).
+forge_protection() { jq -r '.forgeProtection // "required"' "$RISK_POLICY" 2>/dev/null || echo required; }
+# may_automerge <risk> — the risk level must be listed AND the forge must actually be
+# able to refuse a bad push. Where protection is unavailable and the operator accepted
+# that exposure, auto-merge is off at the mechanism: editing autoMergeRiskLevels cannot
+# re-arm it, because the guard is not in that list.
+may_automerge() {
+  [ "$(forge_protection)" = "required" ] || return 1
+  jq -e --arg r "$1" '.autoMergeRiskLevels | index($r)' "$RISK_POLICY" >/dev/null 2>&1
+}
 
 # --- graduated autonomy (ADR-0026) -------------------------------------------
 # Risk says how bad it would be to get this wrong. Trust says how often we have

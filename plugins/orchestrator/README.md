@@ -61,6 +61,14 @@ Requires the `autonomous` profile, green tests, a staging deploy, the
 egress-firewalled sandbox, branch protection on `main`, and a forge (feedback is
 forge-sourced — a no-forge setup can only stage config, not drive the loop).
 
+Two of those bend where the environment cannot supply them, by decision rather
+than by drift: where the forge **cannot** protect `main` (a private repo on a
+free GitHub plan has neither branch protection nor rulesets), the operator may
+accept that once via `forgeProtection: "unavailable-accepted"`, which
+force-disables auto-merge so every merge stays human (ADR-0032); and the `local`
+runtime may substitute a **fail-closed** OS sandbox for the devcontainer on the
+operator's own machine (ADR-0033), where it also needs no secrets at all.
+
 ## How the workflows execute (honest note)
 
 `workflows/*.js` are **prompt-interpreted specs, not executed JavaScript**: the
