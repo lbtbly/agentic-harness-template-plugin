@@ -3,6 +3,31 @@
 All notable changes to the harness marketplace. Format: Keep a Changelog; versions are
 the marketplace `metadata.version` (per-plugin versions in each plugin.json).
 
+## [1.5.1] — 2026-07-27
+### Added
+- **Linear is implemented** (ADR-0029) — the last stub with a real model behind it.
+  Epics are Issues, records carrying a parent become **sub-issues** via `parentId`, and the
+  initiative tier is a Linear **Project**: the hierarchy is read from the board rather than
+  synthesized, so `capabilities.hierarchy` is `native`. Lifecycle state maps onto real
+  workflow states via `linear.stateMap`, the exact parallel of Jira's `statusMap` — but a
+  Linear workflow is not a transition graph, so `stateId` is set directly and the riskiest
+  part of the Jira adapter simply does not exist here. Projects are never created
+  implicitly. `health` validates the map against the team's real states. Every field, type,
+  query and filter key was checked against Linear's published schema before use.
+  New `/core:board-setup` Linear lane and a 58-assertion suite against a GraphQL double.
+
+### Fixed
+- **No board host was in the egress allowlist.** A remote backend pushes state from inside
+  the sandbox, so a Notion or Jira install's `orch state push-*` calls would fail closed
+  mid-run — reading as the loop mysteriously losing its state. Board hosts are now
+  documented (commented, opt-in) and `/orchestrator:enable-orchestrator` verifies the
+  configured backend's host before enabling the loop. Pre-existing; found while adding Linear.
+- **The initiative rollup grouped children as initiatives.** In all five adapters and the
+  `none` backend, a sub-issue with no `initiative` field conjured an "unassigned" initiative
+  that exists on nobody's board. A child belongs to its parent epic, not directly to an
+  initiative.
+- `orchestrator/README.md` still called Jira, Notion and Linear "contract stubs".
+
 ## [1.5.0] — 2026-07-27
 ### Added
 - **The harness can now see why CI is red, and repair it** (ADR-0024). New

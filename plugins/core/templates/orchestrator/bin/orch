@@ -353,7 +353,9 @@ case "$OP" in
          else
            # No explicit initiative records: synthesize one per distinct
            # .initiative value so a flat board still answers the question.
-           [ .[] | select((.level // "epic") != "initiative") ]
+           # EPICS only — a child belongs to its parent epic, not directly to an
+           # initiative, and including them conjured an "unassigned" tier entry.
+           [ .[] | select((.level // "epic") == "epic") ]
            | group_by(.initiative // "unassigned")
            | map({ id: (.[0].initiative // "unassigned"),
                    title: (.[0].initiative // "Unassigned work"),

@@ -48,7 +48,10 @@ orch state triage-suggestion --id N --decision accepted|rejected   # human triag
   zero dependency.
 - **`github-projects` / `gitlab`**: issues + `orch:*` labels via `gh`/`glab`;
   every push mirrors to `.orch/cache/` (gitignored) so reads fail open offline.
-- **`jira` / `notion` / `linear` / `trello`**: contract stubs — implement on demand.
+- **`jira` / `notion` / `linear`**: implemented with NATIVE semantics — Jira Epics +
+  parent-linked children (ADR-0021); Notion database rows; Linear Issues + sub-issues
+  with Projects as the initiative tier (ADR-0029).
+- **`trello`**: contract stub — implement on demand.
 - **State ≠ feedback**: `/orch approve`, `/orch revise: <notes>`,
   `/orch approve-plan` and PR reviews are read from the **code forge**, never
   from the board.

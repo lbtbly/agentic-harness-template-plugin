@@ -10,3 +10,13 @@ codeload.github.com
 registry.npmjs.org
 pypi.org
 files.pythonhosted.org
+
+# --- board backends: NOT enabled by default ----------------------------------
+# A remote state backend pushes status from INSIDE the sandbox, so its host must
+# be reachable or every `orch state push-*` fails closed mid-run. Uncomment the
+# ONE you use (and mirror it into settings.orchestrator.json + init-firewall.sh —
+# the parity test enforces that once it is uncommented).
+# api.linear.app          # backend: linear
+# api.notion.com          # backend: notion
+# <your-site>.atlassian.net   # backend: jira — per-tenant, no fixed host
+# gitlab.com                  # backend: gitlab — or your self-hosted host
