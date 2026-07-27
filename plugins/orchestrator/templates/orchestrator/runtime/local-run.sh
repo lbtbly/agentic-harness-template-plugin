@@ -49,7 +49,10 @@ trap 'rm -rf "$LOCK"' EXIT INT TERM
 # usual install roots (npm-global, Homebrew on both arches, mise shims) so a
 # subscription-authenticated `claude` is found the way it is interactively.
 export PATH="$HOME/.local/bin:$HOME/.npm-global/bin:$HOME/.local/share/mise/shims:/opt/homebrew/bin:/usr/local/bin:$PATH"
-for bin in claude gh jq git; do
+# Only what the GUARDS themselves need. `claude` and `gh` are auth concerns and are
+# asserted at the end, AFTER the sandbox check — so a machine with a misconfigured
+# sandbox is told so, rather than being told its PATH is wrong.
+for bin in jq git; do
   command -v "$bin" >/dev/null 2>&1 || {
     echo "MISSING on PATH: $bin — set PATH explicitly in the launchd plist / systemd unit (runtime/local.md)."; exit 78; }
 done

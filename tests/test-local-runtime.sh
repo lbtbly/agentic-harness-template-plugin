@@ -45,6 +45,10 @@ grep -qi "narrows what already works" "$DOC"; check "local.md says why setting a
 
 # --- the fail-closed sandbox is enforced, not just documented ---
 grep -q "failIfUnavailable" "$SH"; check "local-run.sh checks failIfUnavailable" $?
+# Guard ordering: the sandbox verdict must not be gated behind the presence of the
+# auth CLIs, or a misconfigured sandbox is reported as a PATH problem — and this
+# suite could not exercise the guard on a runner without claude/gh installed.
+grep -q "for bin in jq git" "$SH"; check "the early binary check requires only what the guards need" $?
 if command -v jq >/dev/null 2>&1; then
   TMP=$(mktemp -d)
   mkdir -p "$TMP/orchestrator/runtime" "$TMP/hooks"
