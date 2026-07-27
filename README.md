@@ -70,7 +70,9 @@ CODEOWNERS) gates the merge.
 Initiatives, epics and tasks live on your board — Jira, Notion, Linear, GitHub, GitLab — and
 that is what "exists". Each backend answers at whatever fidelity it has: **Linear** maps the
 whole hierarchy natively (Issues, sub-issues, Projects as the initiative tier — ADR-0029),
-**Jira** uses Epics with parent-linked children, and the rest derive the tier from the record.
+**Notion** likewise via relations, with the initiative as a real page in its own database
+(ADR-0030), **Jira** uses Epics with parent-linked children, and the rest derive the tier
+from the record.
 `.orch/` is a working mirror the agents read while work is in flight,
 reconciled back to the board, which always wins. Cards are **claimed with an expiring lease**,
 so two agents never take the same work and a crashed agent's card returns to the pool instead of

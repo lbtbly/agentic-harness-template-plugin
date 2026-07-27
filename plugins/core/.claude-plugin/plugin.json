@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "core",
   "description": "Core harness: the /new-project scaffolder, guard hooks (secrets, self-elevation, git hygiene), the orch state layer, review agents, and the DoD feature-list contract. Install first.",
-  "version": "1.5.1",
+  "version": "1.5.3",
   "author": {
     "name": "lambertbouley"
   },

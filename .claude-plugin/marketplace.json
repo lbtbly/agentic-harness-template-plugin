@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "The Overnight Harness — run a coding agent unattended overnight: DoD contracts, independent verification, risk-gated auto-merge, morning digests. A core scaffolder plus opt-in feature plugins.",
-    "version": "1.5.1"
+    "version": "1.5.3"
   },
   "plugins": [
     {

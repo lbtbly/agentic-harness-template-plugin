@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Provision the board — Notion · Jira · Linear</title>
+<script>
+  /* Apply saved/preferred theme before paint to avoid a flash. Default: dark. */
+  (function(){try{
+    var s=localStorage.getItem('harness-theme');
+    var t=s||((window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark');
+    if(t==='light')document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}})();
+</script>
+<style>
+  :root{
+    --bg:#201510; --bg2:#261a12; --panel:#2e2115; --panel2:#382818;
+    --line:#463323; --line2:#5a422c;
+    --ink:#f7ead9; --muted:#c8ab8e; --faint:#97795d;
+    --acc:#ff8c42; --acc2:#e9b949; --acc3:#e07a5f;
+    --warn:#ffc45e; --danger:#ff6b8b; --ok:#4ad991;
+    --grad:linear-gradient(120deg,#ff8c42 0%,#e07a5f 45%,#e9b949 100%);
+    --radius:16px; --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --nav-w:260px; --code-bg:#2a1c12; --code-ink:#f0e2d0;
+  }
+  :root[data-theme="light"]{
+    --bg:#fdfaf4; --bg2:#ffffff; --panel:#ffffff; --panel2:#f8f1e4;
+    --line:#eee2cf; --line2:#dfcdb1;
+    --ink:#342217; --muted:#7d6551; --faint:#9c8168;
+    --acc:#c2410c; --acc2:#9c6b16; --acc3:#b85c43;
+    --warn:#9a6200; --danger:#bb3b2c; --ok:#3f7d38;
+    --code-bg:#261a12; --code-ink:#f0e2d0;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  :root[data-theme="light"] body{background:var(--bg)}
+  body{
+    margin:0;background:
+      radial-gradient(1100px 700px at 80% -10%,rgba(255,140,66,.12),transparent 60%),
+      radial-gradient(900px 600px at -10% 10%,rgba(233,185,73,.10),transparent 55%),
+      var(--bg);
+    color:var(--ink);font-family:var(--sans);line-height:1.6;
+    font-size:16px;-webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--acc2);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code{font-family:var(--mono);font-size:.86em;background:var(--panel2);border:1px solid var(--line);
+    padding:.08em .38em;border-radius:6px;color:var(--ink);white-space:nowrap}
+  h1,h2,h3,h4{line-height:1.2;font-weight:700;letter-spacing:-.01em}
+
+  .shell{display:grid;grid-template-columns:var(--nav-w) 1fr;width:100%;margin:0}
+  nav.side{
+    position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+    padding:26px 18px 40px;border-right:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(15,19,32,.06),transparent);backdrop-filter:blur(6px);
+  }
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:22px}
+  .brand .mark{width:34px;height:34px;border-radius:9px;background:var(--grad);flex:0 0 auto;
+    box-shadow:0 6px 22px rgba(255,140,66,.4)}
+  .brand b{font-size:15px;letter-spacing:.02em}
+  .brand span{display:block;font-size:11px;color:var(--faint);font-weight:500;letter-spacing:.06em;text-transform:uppercase}
+  nav.side a.nl{display:block;padding:7px 12px;border-radius:9px;color:var(--muted);
+    font-size:13.5px;font-weight:500;border-left:2px solid transparent;transition:.15s}
+  nav.side a.nl:hover{color:var(--ink);background:rgba(255,140,66,.08);text-decoration:none}
+  nav.side .grp{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);
+    margin:18px 12px 6px;font-weight:700}
+  .theme-btn{margin-top:20px;width:100%;padding:8px 12px;border-radius:9px;cursor:pointer;
+    background:var(--panel);border:1px solid var(--line2);color:var(--muted);font-size:12.5px;font-family:var(--mono)}
+  .theme-btn:hover{color:var(--ink);border-color:var(--acc)}
+
+  main{padding:0 clamp(20px,4vw,64px) 90px;min-width:0}
+  section{padding-top:56px;scroll-margin-top:20px}
+  section>h2{font-size:clamp(24px,3vw,32px);margin:0 0 6px}
+  .lead{color:var(--muted);max-width:70ch;margin:0 0 24px}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--acc);font-weight:700;margin-bottom:8px}
+
+  .hero{padding-top:64px}
+  .hero h1{font-size:clamp(34px,6vw,60px);margin:14px 0 10px;letter-spacing:-.02em}
+  .hero h1 .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p.tag{font-size:clamp(17px,2.3vw,21px);color:var(--ink);max-width:64ch;margin:0 0 8px;font-weight:500}
+  .hero p.sub{color:var(--muted);max-width:70ch;margin:0 0 26px}
+  .badges{display:flex;flex-wrap:wrap;gap:9px;margin:22px 0 6px}
+  .badge{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;
+    background:var(--panel);border:1px solid var(--line2);font-size:13px;color:var(--ink);font-weight:600}
+  .badge b{color:var(--acc2)}
+  .principle-line{margin-top:22px;padding:14px 18px;border-radius:12px;border:1px dashed var(--line2);
+    background:rgba(255,140,66,.06);color:var(--ink);font-weight:500;max-width:72ch}
+  .principle-line b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .card{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);
+    border-radius:var(--radius);padding:20px 20px 18px;position:relative;overflow:hidden}
+  .card h3{margin:0 0 6px;font-size:17px;display:flex;align-items:center;gap:9px}
+  .card p{margin:0;color:var(--muted);font-size:14px}
+  .card .ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:16px;
+    background:rgba(255,140,66,.14);border:1px solid var(--line2);flex:0 0 auto}
+
+  .twrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg2);margin:14px 0}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:540px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  thead th{position:sticky;top:0;background:var(--panel2);color:var(--ink);font-weight:700;
+    font-size:12px;letter-spacing:.03em;text-transform:uppercase;z-index:1}
+  tbody tr:hover{background:rgba(255,140,66,.05)}
+  tbody tr:last-child td{border-bottom:none}
+  td code{white-space:nowrap}
+  .muted{color:var(--muted)}
+
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700;
+    border:1px solid var(--line2);white-space:nowrap}
+  .p-auto{color:var(--acc2);background:rgba(233,185,73,.1);border-color:rgba(233,185,73,.3)}
+  .p-gated{color:var(--warn);background:rgba(255,180,84,.1);border-color:rgba(255,180,84,.3)}
+  .p-esc{color:var(--danger);background:rgba(255,107,139,.1);border-color:rgba(255,107,139,.3)}
+  .p-opus{color:var(--acc3);background:rgba(224,122,95,.1);border-color:rgba(224,122,95,.3)}
+  .p-son{color:var(--acc);background:rgba(255,140,66,.1);border-color:rgba(255,140,66,.3)}
+  .p-hai{color:var(--ok);background:rgba(74,217,145,.1);border-color:rgba(74,217,145,.3)}
+  .p-core{color:var(--ok);background:rgba(74,217,145,.1);border-color:rgba(74,217,145,.3)}
+  .p-mod{color:var(--acc);background:rgba(255,140,66,.1);border-color:rgba(255,140,66,.3)}
+  .p-you{color:var(--warn);background:rgba(255,180,84,.1);border-color:rgba(255,180,84,.3)}
+  .p-ai{color:var(--acc2);background:rgba(233,185,73,.1);border-color:rgba(233,185,73,.3)}
+
+  pre{background:var(--code-bg);border:1px solid var(--line2);border-radius:12px;
+    padding:16px 18px;overflow-x:auto;margin:14px 0}
+  pre code{background:none;border:none;padding:0;color:var(--code-ink);white-space:pre;font-size:13px;line-height:1.65}
+  .c-dim{color:#a08464}.c-am{color:#f0b429}.c-tl{color:#ffc06e}
+
+  .callout{margin:16px 0;padding:14px 18px;border-radius:12px;border:1px solid var(--line);
+    border-left:3px solid var(--acc);background:var(--panel);max-width:76ch}
+  .callout .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--acc);display:block;margin-bottom:4px}
+  .callout p{margin:0;color:var(--muted);font-size:14.5px}
+  .callout.warn{border-left-color:var(--warn)} .callout.warn .lbl{color:var(--warn)}
+  .callout.ok{border-left-color:var(--ok)} .callout.ok .lbl{color:var(--ok)}
+  .callout.danger{border-left-color:var(--danger)} .callout.danger .lbl{color:var(--danger)}
+
+  .steps{margin:18px 0;display:flex;flex-direction:column}
+  .step{display:grid;grid-template-columns:44px 1fr;gap:14px;padding:14px 0;border-top:1px solid var(--line)}
+  .step:first-child{border-top:none}
+  .step .n{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--acc);padding-top:2px}
+  .step h4{margin:0 0 3px;font-size:15.5px}
+  .step p{margin:0;font-size:14px;color:var(--muted)}
+
+  .flow{display:flex;gap:8px;overflow-x:auto;padding:6px 2px 14px;margin:14px 0}
+  .lc{flex:0 0 auto;width:148px;border:1px solid var(--line);border-radius:11px;padding:11px 13px;
+    background:var(--panel);display:flex;flex-direction:column;gap:6px}
+  .lc .st{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--ink)}
+  .lc p{margin:0;font-size:12px;color:var(--muted)}
+  .lc .who{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:auto;padding-top:6px;border-top:1px dashed var(--line)}
+  .lc.you{border-color:var(--warn)} .lc.you .st{color:var(--warn)}
+  .lc.rework{border-color:var(--danger)} .lc.rework .st{color:var(--danger)}
+  .lc.done{border-color:var(--ok)} .lc.done .st{color:var(--ok)}
+
+  footer{margin-top:70px;padding-top:24px;border-top:1px solid var(--line);color:var(--faint);
+    font-size:13px;font-family:var(--mono)}
+
+  @media(max-width:960px){
+    .shell{grid-template-columns:1fr}
+    nav.side{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}
+    .g2,.g3{grid-template-columns:1fr}
+  }
+
+  /* ---- the map: flow schemas ---- */
+  .schema-wrap{border:1px solid var(--line);border-radius:var(--radius);background:var(--bg2);
+    margin:18px 0;overflow:hidden;display:flex;flex-direction:column}
+  .schema-head{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .schema-head h3{margin:0;font-size:15px}
+  .schema-head .hint{color:var(--faint);font-size:11.5px;font-family:var(--mono)}
+  .expand-btn{margin-left:auto;flex:0 0 auto;padding:6px 12px;border-radius:8px;cursor:pointer;
+    background:var(--panel2);border:1px solid var(--line2);color:var(--muted);font-size:12px;font-family:var(--mono)}
+  .expand-btn:hover{color:var(--ink);border-color:var(--acc)}
+  .schema-body{overflow:auto;padding:8px 6px}
+  .schema-body svg{display:block;width:100%;height:auto;min-width:980px}
+  .schema-legend{display:flex;flex-wrap:wrap;gap:14px;padding:8px 16px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+  .schema-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;
+    border:1.5px solid;vertical-align:-1px;font-style:normal}
+  .schema-wrap.full{position:fixed;inset:0;z-index:80;border-radius:0;margin:0;background:var(--bg)}
+  .schema-wrap.full .schema-body{flex:1;display:grid;place-items:center;padding:12px}
+  .schema-wrap.full .schema-body svg{min-width:0;width:100%;height:100%;max-height:calc(100vh - 110px)}
+  .schema svg .snode rect{fill:var(--panel);stroke:var(--line2);stroke-width:1.3;transition:.12s}
+  .schema svg a.snode:hover rect{stroke-width:2.4;filter:brightness(1.12)}
+  .schema svg .snode.you rect{stroke:var(--warn)}
+  .schema svg .snode.ai rect{stroke:var(--acc2)}
+  .schema svg .snode.gate rect{stroke:var(--danger)}
+  .schema svg .snode.okn rect{stroke:var(--ok)}
+  .schema svg text{fill:var(--ink);font:600 13px var(--sans)}
+  .schema svg text.sm{fill:var(--muted);font:400 10.5px var(--sans)}
+  .schema svg text.lane{fill:var(--faint);font:700 10px var(--mono);letter-spacing:1.5px}
+  .schema svg text.elbl{fill:var(--faint);font:600 10.5px var(--mono)}
+  .schema svg path.edge{stroke:var(--faint);stroke-width:1.4;fill:none}
+  .schema svg path.edge.loopy{stroke:var(--acc);stroke-dasharray:5 4}
+  .schema svg marker path{fill:var(--faint)}
+  .schema svg marker.mloop path{fill:var(--acc)}
+  .schema svg rect.groupbox{fill:rgba(255,140,66,.03);stroke:var(--line2);stroke-dasharray:6 5}
+
+  /* ---- clickable file refs + slide-in file viewer ---- */
+  [data-file],[data-dir]{cursor:pointer}
+  code[data-file],code[data-dir]{border-bottom:1px dashed var(--acc2)}
+  code[data-file]:hover,code[data-dir]:hover{color:var(--acc2);border-color:var(--acc2)}
+  .fchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .fchip{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;
+    font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--acc2);
+    background:rgba(233,185,73,.08);border:1px solid rgba(233,185,73,.3);cursor:pointer;transition:.12s}
+  .fchip:hover{background:rgba(233,185,73,.16);color:var(--ink)}
+  .fchip::before{content:"›";color:var(--faint)}
+  .fchip.dir::before{content:"▸"}
+  .flabel{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+    font-weight:700;align-self:center;margin-right:2px}
+
+  .backdrop{position:fixed;inset:0;background:rgba(22,13,7,.55);opacity:0;pointer-events:none;
+    transition:opacity .22s;z-index:60}
+  .backdrop.on{opacity:1;pointer-events:auto}
+  aside.drawer{position:fixed;top:0;right:0;height:100vh;width:min(760px,94vw);z-index:70;
+    background:var(--bg2);border-left:1px solid var(--line2);box-shadow:-24px 0 60px rgba(0,0,0,.45);
+    transform:translateX(102%);transition:transform .26s cubic-bezier(.2,.7,.2,1);
+    display:flex;flex-direction:column}
+  aside.drawer.on{transform:translateX(0)}
+  .dhead{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);
+    background:var(--panel)}
+  .dhead .crumbs{flex:1;min-width:0;font-family:var(--mono);font-size:12.5px;color:var(--muted);
+    white-space:nowrap;overflow-x:auto}
+  .dhead .crumbs a{color:var(--muted)} .dhead .crumbs a:hover{color:var(--acc2)}
+  .dhead .crumbs b{color:var(--ink);font-weight:600}
+  .dclose{flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid var(--line2);
+    background:var(--panel2);color:var(--muted);cursor:pointer;font-size:14px;line-height:1}
+  .dclose:hover{color:var(--ink);border-color:var(--acc)}
+  .dmeta{padding:8px 18px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--faint);
+    font-family:var(--mono);display:flex;gap:14px}
+  .dbody{flex:1;overflow:auto;padding:0}
+  .dbody pre.src{margin:0;border:none;border-radius:0;background:var(--code-bg);min-height:100%}
+  .dbody pre.src code{white-space:pre;font-size:12.5px;line-height:1.6;display:block;padding:2px 0}
+  .dbody .ln{display:inline-block;width:3.2em;text-align:right;margin-right:1.1em;color:#6b5849;
+    user-select:none;font-size:11px}
+  .tree{list-style:none;margin:0;padding:14px 10px}
+  .tree li{margin:1px 0}
+  .tree .entry{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;
+    font-family:var(--mono);font-size:13px;color:var(--ink);cursor:pointer}
+  .tree .entry:hover{background:rgba(255,140,66,.09)}
+  .tree .entry .tico{width:18px;text-align:center;color:var(--faint)}
+  .tree .entry .sz{margin-left:auto;color:var(--faint);font-size:11px}
+  .drawer-tip{padding:10px 18px;border-top:1px solid var(--line);font-size:11.5px;color:var(--faint)}
+
+/* --- board-guide additions ------------------------------------------------ */
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 22px}
+.tab{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:999px;
+     padding:9px 18px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
+.tab:hover{border-color:var(--acc)}
+.tab[aria-selected="true"]{background:var(--grad);color:#1b1410;border-color:transparent}
+.pane[hidden]{display:none}
+ol.steps-n{list-style:none;counter-reset:s;padding:0;margin:0}
+ol.steps-n>li{counter-increment:s;position:relative;padding:0 0 22px 52px;margin:0}
+ol.steps-n>li::before{content:counter(s);position:absolute;left:0;top:0;width:34px;height:34px;
+  border-radius:10px;background:var(--grad);color:#1b1410;font-weight:800;font-size:15px;
+  display:grid;place-items:center}
+ol.steps-n>li::after{content:"";position:absolute;left:17px;top:38px;bottom:6px;width:1px;background:var(--line)}
+ol.steps-n>li:last-child::after{display:none}
+ol.steps-n>li>h4{margin:6px 0 6px;font-size:16px}
+ol.steps-n>li p{margin:0 0 8px;color:var(--fg2)}
+.ui{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:1px 7px;
+    font-size:12.5px;font-weight:600;background:var(--card2,var(--card));white-space:nowrap}
+.sep{opacity:.5;margin:0 4px}
+.gotcha{border-left:3px solid var(--danger);background:color-mix(in srgb,var(--danger) 8%,transparent);
+        border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0}
+.gotcha b{color:var(--danger)}
+.verified{font-size:12px;color:var(--fg2);opacity:.85;margin-top:6px}
+table.map td:first-child{white-space:nowrap;font-family:var(--mono);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<nav class="side">
+  <div class="brand">
+    <div class="mark"></div>
+    <div><b>The Overnight Harness</b><span>provision the board</span></div>
+  </div>
+  <a class="nl" href="START_HERE.html">&larr; Back to the overview</a>
+  <div class="grp">Before you pick</div>
+  <a class="nl" href="#what">What the framework needs</a>
+  <a class="nl" href="#choose">Which backend</a>
+  <div class="grp">Step by step</div>
+  <a class="nl" href="#linear">Linear</a>
+  <a class="nl" href="#notion">Notion</a>
+  <a class="nl" href="#jira">Jira</a>
+  <div class="grp">Finishing</div>
+  <a class="nl" href="#verify">Verify it works</a>
+  <a class="nl" href="#unattended">Before the loop runs</a>
+  <a class="nl" href="#trouble">When it goes wrong</a>
+  <button class="theme-btn" id="themeToggle" type="button">&#9680; toggle theme</button>
+</nav>
+
+<main>
+
+<section class="hero" id="top">
+  <div class="eyebrow">Setup guide &middot; one page per backend</div>
+  <h1>Provision the board.<br><span class="g">Then the loop has somewhere to think.</span></h1>
+  <p class="tag">The board is the golden source: every initiative, epic and task lives there, and <code>.orch/</code> is only a working mirror. This page gets one ready, click by click, for <b>Linear</b>, <b>Notion</b> or <b>Jira</b>.</p>
+  <p class="sub">Twenty minutes, once. <code>/core:board-setup</code> automates most of it &mdash; this is what it does, and what it cannot do for you because no API exposes it.</p>
+  <div class="verified">UI paths verified against vendor documentation on 27 July 2026. Vendors move menus; if a path is stale, the <span class="ui">Settings</span> search box in each tool finds the page by name.</div>
+</section>
+
+<section id="what">
+  <div class="eyebrow">The contract</div>
+  <h2>What the framework actually needs</h2>
+  <p class="lead">Only three things, whatever the tool. Everything else on this page is one vendor&rsquo;s way of expressing them.</p>
+  <div class="grid g3">
+    <div class="card"><h3><span class="ic">&#128207;</span>A place per work item</h3><p>One card per epic, carrying an id in its title as <code>[epic-id] Title</code>. The full record travels as JSON inside the card &mdash; the human-readable fields are the view, not the source.</p></div>
+    <div class="card"><h3><span class="ic">&#127937;</span>Twelve lifecycle states</h3><p>The loop moves cards through them. Your board does <b>not</b> need twelve columns &mdash; the map is many-to-one, so five real states are enough.</p></div>
+    <div class="card"><h3><span class="ic">&#128273;</span>A token, eventually</h3><p>Only when the <i>unattended</i> loop runs. Provisioning interactively needs none. Names never values (<code>docs/SECURITY.md</code>).</p></div>
+  </div>
+
+  <h3 style="margin:26px 0 8px;font-size:18px">The twelve states</h3>
+  <div class="flow">
+    <div class="lc"><div class="st">Suggested</div><p>Machine-proposed. The night loop never builds from this lane.</p></div>
+    <div class="lc you"><div class="st">Backlog</div><p>Filed, not yet planned.</p></div>
+    <div class="lc"><div class="st">Needs-plan</div><p>Awaiting a plan.</p></div>
+    <div class="lc you"><div class="st">Planned</div><p>Plan approved &mdash; cleared to build.</p></div>
+    <div class="lc"><div class="st">In-progress</div><p>A worker is on it.</p></div>
+    <div class="lc"><div class="st">Needs-review</div><p>PR open, awaiting your signal.</p></div>
+    <div class="lc rework"><div class="st">Changes-requested</div><p>Back for rework.</p></div>
+    <div class="lc done"><div class="st">Approved &rarr; Merged</div><p>Landed.</p></div>
+    <div class="lc"><div class="st">Blocked</div><p>Failed N attempts &mdash; human triage.</p></div>
+    <div class="lc"><div class="st">Paused</div><p>Usage-limit checkpoint. Auto-resumes.</p></div>
+    <div class="lc"><div class="st">Cancelled</div><p>Rejected suggestion.</p></div>
+  </div>
+  <div class="callout"><span class="lbl">The split everything rests on</span><p>The board shows <b>state</b>. Your <b>approvals</b> are read from the forge &mdash; the pull request &mdash; never from the board. Commenting <code>/orch approve</code> on a Notion page or a Jira issue does nothing. That is deliberate: the thing that gates a merge should be the thing that shows the diff.</p></div>
+</section>
+
+<section id="choose">
+  <div class="eyebrow">Pick one</div>
+  <h2>Which backend, and how much work each is</h2>
+  <div class="twrap"><table>
+    <thead><tr><th>Backend</th><th>Setup effort</th><th>Hierarchy</th><th>Pick it when</th></tr></thead>
+    <tbody>
+      <tr><td><b>Linear</b></td><td><span class="pill p-auto">lowest</span> nothing to create</td><td><span class="pill p-auto">native</span> all three tiers</td><td>You want the least setup and the truest mapping. Its own model is Initiative &rarr; Project &rarr; Issue &rarr; Sub-issue.</td></tr>
+      <tr><td><b>Notion</b></td><td><span class="pill p-you">medium</span> a database to build</td><td>derived from the record</td><td>Your team already lives in Notion and you want the board beside the docs.</td></tr>
+      <tr><td><b>Jira</b></td><td><span class="pill p-esc">highest</span> statuses are manual</td><td><span class="pill p-auto">native</span> epics + children</td><td>Jira is mandated, or you need its epic/child semantics and reporting.</td></tr>
+      <tr><td><b>GitHub / GitLab issues</b></td><td>low</td><td>derived</td><td>You want zero extra tools &mdash; the board is issues in the same repo.</td></tr>
+      <tr><td><code>none</code></td><td><span class="pill p-auto">zero</span></td><td>derived</td><td>Trying the harness out. State is sharded JSON in <code>.orch/</code>, committed with the repo.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout"><span class="lbl">You can start at <code>none</code></span><p>The backend is a line in <code>state.config.json</code> and the board outlives enabling or disabling the loop. Run on <code>none</code> for a week, then provision a real board when you want other people to see the work.</p></div>
+</section>
+
+<!-- ======================= LINEAR ======================= -->
+<section id="linear">
+  <div class="eyebrow">Backend 1 of 3 &middot; least setup</div>
+  <h2>Linear</h2>
+  <p class="lead">Nothing needs creating. A Linear team already has workflow states and labels, so this is naming what exists and writing four lines of config.</p>
+
+  <ol class="steps-n">
+    <li>
+      <h4>Find your team key</h4>
+      <p>It is the prefix on every issue id &mdash; the <code>ENG</code> in <code>ENG&#8209;123</code>. Everything the harness does is scoped to one team.</p>
+      <p><span class="ui">Settings</span><span class="sep">&rsaquo;</span><span class="ui">Teams</span> lists them if you are unsure.</p>
+    </li>
+    <li>
+      <h4>Look at the team&rsquo;s issue statuses</h4>
+      <p><span class="ui">Settings</span><span class="sep">&rsaquo;</span><span class="ui">Teams</span><span class="sep">&rsaquo;</span><span class="ui"><i>your team</i></span><span class="sep">&rsaquo;</span><span class="ui">Issue statuses</span></p>
+      <p>A new team ships with exactly five, in this order: <b>Backlog &middot; Todo &middot; In Progress &middot; Done &middot; Canceled</b>. Statuses belong to categories &mdash; Backlog, Unstarted, Started, Completed, Canceled &mdash; and the category is what Linear uses for its own logic, so put any new status in the right one.</p>
+      <div class="gotcha"><b>There is no &ldquo;In Review&rdquo; by default.</b> A lot of guidance assumes there is. If you map <code>Needs&#8209;review</code> to a status that does not exist, <code>health</code> tells you and that state silently falls back to a label instead.</div>
+    </li>
+    <li>
+      <h4>Optional, 30 seconds, worth it: add <span class="ui">In Review</span></h4>
+      <p>On the same screen, add a status named <b>In Review</b> in the <b>Started</b> category, positioned after <i>In Progress</i>. It separates &ldquo;being built&rdquo; from &ldquo;waiting on you&rdquo; &mdash; which is exactly the distinction you act on each morning.</p>
+    </li>
+    <li>
+      <h4>Write the config</h4>
+      <p>In your repo, <code>orchestrator/state.config.json</code>. This is the <b>stock-team</b> map &mdash; every target exists on a brand-new team, so it works with no Linear changes at all:</p>
+<pre><code>{
+  "backend": "linear",
+  "forge": "github",
+  "linear": {
+    "teamKey": "ENG",
+    "stateMap": {
+      "Suggested": "Backlog",     "Backlog": "Backlog",
+      "Needs-plan": "Backlog",    "Planned": "Todo",
+      "In-progress": "In Progress",
+      "Needs-review": "In Progress",
+      "Changes-requested": "In Progress",
+      "Approved": "Done",         "Merged": "Done",
+      "Blocked": "Todo",          "Paused": "Todo",
+      "Cancelled": "Canceled"
+    }
+  }
+}</code></pre>
+      <p>If you added <b>In Review</b> in step 3, point <code>Needs-review</code> and <code>Changes-requested</code> at it instead.</p>
+    </li>
+    <li>
+      <h4>Create a Project per initiative &mdash; only if you want the native tier</h4>
+      <p>Sidebar <span class="ui">Projects</span><span class="sep">&rsaquo;</span><span class="ui">+ Create project</span>. An epic whose <code>initiative</code> field matches a project name is filed under it, and <code>list&#8209;initiatives</code> then reads the real tier instead of deriving one.</p>
+      <div class="callout"><span class="lbl">The adapter never creates projects</span><p>Conjuring a project from a free-text field is how boards get littered. No match &rarr; a warning on stderr, the value stays in the record, the run continues.</p></div>
+    </li>
+    <li>
+      <h4>Labels: nothing to do</h4>
+      <p><code>orch-epic</code>, <code>orch-child</code>, <code>orch-state-*</code> and <code>orch-complexity-*</code> are created on demand. On a governed workspace set <code>"createMissingLabels": false</code> &mdash; the lifecycle then relies entirely on <code>stateMap</code>.</p>
+    </li>
+  </ol>
+
+  <h3 style="margin:26px 0 8px;font-size:18px">How the harness maps onto Linear</h3>
+  <div class="twrap"><table class="map">
+    <thead><tr><th>Harness</th><th>Linear</th><th>Mechanism</th></tr></thead>
+    <tbody>
+      <tr><td>initiative</td><td><b>Project</b></td><td><code>projectId</code> on the issue</td></tr>
+      <tr><td>epic</td><td><b>Issue</b></td><td>label <code>orch-epic</code>, title <code>[id] &hellip;</code></td></tr>
+      <tr><td>child / task</td><td><b>Sub-issue</b></td><td><code>parentId</code>, label <code>orch-child</code></td></tr>
+      <tr><td>lifecycle state</td><td><b>Issue status</b></td><td><code>stateMap</code>, label fallback</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lead" style="font-size:15px">Epics are Issues rather than Projects because the contract is issue-shaped &mdash; twelve states, labels, an assignee carrying the claim, a PR number, and a description that can hold the record. Linear Projects have a five-value status enum and none of that. Full reasoning in <code>ADR-0029</code>.</p>
+
+  <p class="verified"><b>the adapter:</b> <code>pm-linear.js</code> · <code>test-pm-linear.sh</code> · <code>ADR-0029</code> — browse the source in <a href="START_HERE.html">the overview</a>.</p>
+</section>
+
+<!-- ======================= NOTION ======================= -->
+<section id="notion">
+  <div class="eyebrow">Backend 2 of 3</div>
+  <h2>Notion</h2>
+  <p class="lead">Two databases and three commands. Notion is the only backend where the initiative is a <b>real page</b> with its own board and state, rather than a derived grouping &mdash; which is why it takes one more step than the others.</p>
+
+  <div class="callout"><span class="lbl">Let the connector do it</span><p>If your session has a Notion connector, <code>/core:board-setup</code> runs all of this as SQL DDL. The steps below are what it does &mdash; worth reading once, because two of them are things no API can fix afterwards.</p></div>
+
+  <h3 style="margin:26px 0 8px;font-size:18px">How the harness maps onto Notion</h3>
+  <div class="twrap"><table class="map">
+    <thead><tr><th>Harness</th><th>Notion</th><th>Mechanism</th></tr></thead>
+    <tbody>
+      <tr><td>initiative</td><td><b>Page in a second database</b></td><td><code>Initiative</code> relation</td></tr>
+      <tr><td>epic</td><td><b>Page</b>, <code>Type = Epic</code></td><td>title <code>[id] &hellip;</code></td></tr>
+      <tr><td>task / child</td><td><b>Page</b>, <code>Type = Task</code></td><td><code>Parent epic</code> self-relation</td></tr>
+      <tr><td>lifecycle state</td><td><b>State</b> select</td><td>the 12 options <i>are</i> the columns</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lead" style="font-size:15px">The <code>Type</code> property is not decoration. Without it, epics and tasks sit in one flat table with nothing telling them apart &mdash; for you or for the agent. Jira and Linear have always distinguished them with labels; this is Notion&rsquo;s equivalent.</p>
+
+  <ol class="steps-n">
+    <li>
+      <h4>Create the <b>Initiatives</b> database first</h4>
+      <p>The epics database relates <i>to</i> it, so it has to exist first.</p>
+<pre><code>CREATE TABLE ("Name" TITLE,
+              "State" SELECT('Backlog':gray, 'In-progress':blue, 'Merged':green),
+              "Initiative ID" RICH_TEXT)</code></pre>
+      <p>Keep the id it returns &mdash; that is <code>&lt;init_ds&gt;</code> below. By hand: <code>/database</code> &rarr; <b>Database &mdash; Full page</b>, then add the two properties.</p>
+    </li>
+    <li>
+      <h4>Create the <b>Epics</b> database, related to it</h4>
+<pre><code>CREATE TABLE ("Name" TITLE,
+              "Type" SELECT('Epic':purple, 'Task':gray),
+              "State" SELECT('Suggested':gray,'Backlog':gray,'Needs-plan':brown,
+                             'Planned':orange,'In-progress':blue,'Needs-review':yellow,
+                             'Changes-requested':red,'Approved':green,'Merged':green,
+                             'Blocked':red,'Paused':gray,'Cancelled':default),
+              "Epic ID" RICH_TEXT,
+              "Initiative" RELATION('<span class="c-tl">&lt;init_ds&gt;</span>', DUAL 'Epics' 'epics'),
+              "Assigned to" RICH_TEXT,
+              "Complexity" SELECT('low':green, 'medium':yellow, 'high':red),
+              "PR" NUMBER, "Note" RICH_TEXT, "Updated" DATE)</code></pre>
+      <div class="gotcha"><b>Name both sides of the relation.</b> A bare <code>DUAL</code> gives the other database an auto-generated inverse called <code>Related to &lt;database&gt; (Initiative)</code> &mdash; and you cannot rename it from the DDL afterwards. <code>DUAL 'Epics' 'epics'</code> names it properly. (I found this the hard way; no documentation mentions it.)</div>
+    </li>
+    <li>
+      <h4>Add the <b>self-relation</b> for tasks &mdash; a second call</h4>
+      <p>It needs the epics database&rsquo;s own id, which only exists after step 2.</p>
+<pre><code>ADD COLUMN "Parent epic" RELATION('<span class="c-tl">&lt;epics_ds&gt;</span>', DUAL 'Sub-tasks' 'subtasks')</code></pre>
+      <p>One statement creates <b>both</b> sides. Set <code>Parent epic</code> on a task and Notion fills <code>Sub-tasks</code> on the epic itself &mdash; nothing writes the inverse, and the harness never tries to.</p>
+    </li>
+    <li>
+      <h4>Set the State options in lifecycle order, then group by State</h4>
+      <p>Switch to a <b>Board</b> view, then <span class="ui">&hellip;</span><span class="sep">&rsaquo;</span><span class="ui">Group</span><span class="sep">&rsaquo;</span><span class="ui">State</span>. Columns inherit the option order.</p>
+      <p>Worth adding a second view filtered to <code>Type = Epic</code> &mdash; a clean epic board with the tasks tucked away.</p>
+      <div class="gotcha"><b>Some clients append options alphabetically.</b> If <i>Approved</i> sits above <i>Backlog</i>, drag them into lifecycle order now. The public API cannot configure a view, so this is human-only &mdash; and it is inherited by every board built on the property.</div>
+    </li>
+    <li>
+      <h4>Record <i>both</i> ids</h4>
+<pre><code>{
+  "backend": "notion",
+  "forge": "github",
+  "notion": {
+    "dataSourceId": "&lt;epics_ds&gt;",
+    "initiativesDataSourceId": "&lt;init_ds&gt;"
+  }
+}</code></pre>
+      <p>Already running an older board? A config with just <code>"databaseId"</code> still works &mdash; the adapter resolves the data source once and tells you to record the id.</p>
+    </li>
+    <li>
+      <h4>Create the integration and share <b>both</b> databases</h4>
+      <p>Go to <b>app.notion.com/developers/connections</b> (workspace owner required), create a connection, copy its <b>installation access token</b> from the <span class="ui">Configuration</span> tab.</p>
+      <p>Then for <b>each</b> database: open it &rarr; <span class="ui">&bull;&bull;&bull;</span> top right <span class="sep">&rsaquo;</span> <span class="ui">Add connections</span> <span class="sep">&rsaquo;</span> your integration.</p>
+      <div class="gotcha"><b>Both. Not just the epics one.</b> A related database that is not shared makes every relation read 404 &mdash; and the error looks like a wrong id, not a permissions problem. <code>orch state health</code> probes the Initiatives database on purpose and names this cause, because the raw error does not.</div>
+      <p>Export the token as <code>NOTION_TOKEN</code>. The <b>name</b> goes in <code>.env.example</code>; the value never touches the repo.</p>
+    </li>
+  </ol>
+
+  <div class="callout"><span class="lbl">Every piece is optional</span><p>Skip the Initiatives database, or the self-relation, or <code>Type</code>, and the board still works &mdash; that part of the hierarchy simply lives in the record JSON instead, exactly as it did before. <code>health</code> tells you what is missing and <code>capabilities</code> reports <code>hierarchy: derived</code> rather than <code>native</code>. Nothing breaks; you just see less.</p></div>
+</section>
+
+<!-- ======================= JIRA ======================= -->
+<section id="jira">
+  <div class="eyebrow">Backend 3 of 3 &middot; most manual</div>
+  <h2>Jira</h2>
+  <p class="lead">Jira is the only backend with a step no API can do for you: <b>statuses and columns are created by hand</b>. Neither the REST API nor any connector can create a status or reconfigure a workflow. Everything else is automatable.</p>
+
+  <div class="callout warn"><span class="lbl">Answer this first</span><p>Is this a <b>fresh project dedicated to the harness</b>, or an <b>existing project with your team&rsquo;s real work in it</b>? Fresh &rarr; give it one column per lifecycle state and use an identity map. Lived-in &rarr; <b>change nothing</b>. Statuses, workflows and issue types belong to that team; map many-to-one onto what already exists and skip the column step entirely.</p></div>
+
+  <ol class="steps-n">
+    <li>
+      <h4>Create or pick a project</h4>
+      <p>A <b>team-managed Kanban</b> project is the easiest to configure, because its board owns its own statuses. Note the project <b>key</b> &mdash; the <code>ENG</code> in <code>ENG&#8209;123</code>.</p>
+      <p>No connector can create a Jira project, so this is manual whichever route you take.</p>
+    </li>
+    <li>
+      <h4>Fresh project only: add the columns</h4>
+      <p>On the board, a <b>column is a status</b>. Add one per lifecycle state:</p>
+      <p><b>+</b> at the right of the columns adds one (creating the status with it) <span class="sep">&middot;</span> select a column name to rename it, or <span class="ui">&bull;&bull;&bull;</span><span class="sep">&rsaquo;</span><span class="ui">Rename</span> <span class="sep">&middot;</span> drag a column by its top to reorder.</p>
+      <p>For advanced configuration: sidebar <span class="ui">Space settings</span> (formerly <i>Project settings</i>) <span class="sep">&rsaquo;</span><span class="ui">Board</span>, which opens <span class="ui">Columns and statuses</span>.</p>
+      <div class="gotcha"><b>Two prerequisites.</b> Work items must be grouped by <b>status</b> (the default), and the space must use a <b>single workflow</b> &mdash; otherwise Jira disables column editing on the board and you must go through workflow admin instead.</div>
+    </li>
+    <li>
+      <h4>Map the twelve states onto real statuses</h4>
+      <p>Many-to-one is fine and expected. For a stock board (<i>Idea / To Do / In Progress / Testing / Done</i>):</p>
+<pre><code>{
+  "backend": "jira",
+  "forge": "github",
+  "jira": {
+    "projectKey": "ENG",
+    "epicIssueType": "Epic",
+    "childIssueType": "Task",
+    "statusMap": {
+      "Suggested": "Idea",
+      "Backlog": "To Do",       "Needs-plan": "To Do",
+      "Planned": "To Do",       "Blocked": "To Do",
+      "Paused": "To Do",
+      "In-progress": "In Progress",
+      "Needs-review": "Testing", "Changes-requested": "Testing",
+      "Approved": "Done",        "Merged": "Done",
+      "Cancelled": "Done"
+    }
+  }
+}</code></pre>
+    </li>
+    <li>
+      <h4>Create the API token &mdash; unattended loop only</h4>
+      <p>Go to <b>id.atlassian.com/manage-profile/security/api-tokens</b> <span class="sep">&rsaquo;</span> <span class="ui">Create API token</span>. Name it, set an expiry (1&ndash;365 days), and <b>copy it immediately</b> &mdash; it is shown once.</p>
+      <div class="gotcha"><b>Create an <i>unscoped</i> token, not a scoped one.</b> Atlassian now offers <span class="ui">Create API token with scopes</span>, and those tokens must be called against <code>https://api.atlassian.com/ex/jira/&lt;cloudId&gt;</code> &mdash; <b>not</b> your <code>&lt;site&gt;.atlassian.net</code> URL. The adapter uses the site URL with Basic auth, which is the unscoped pattern. Pick a scoped token and every call 404s against a base URL that looks correct.</div>
+      <p>Export <code>JIRA_BASE_URL</code> (<code>https://&lt;site&gt;.atlassian.net</code>), <code>JIRA_EMAIL</code>, <code>JIRA_API_TOKEN</code>. Names in <code>.env.example</code>; values never.</p>
+    </li>
+  </ol>
+
+  <h3 style="margin:26px 0 8px;font-size:18px">How the harness maps onto Jira</h3>
+  <div class="twrap"><table class="map">
+    <thead><tr><th>Harness</th><th>Jira</th><th>Mechanism</th></tr></thead>
+    <tbody>
+      <tr><td>epic</td><td><b>Epic</b> issue type</td><td>label <code>orch-epic</code>, summary <code>[id] &hellip;</code></td></tr>
+      <tr><td>child / task</td><td><b>Task</b> under the Epic</td><td><code>parent</code> link, label <code>orch-child</code></td></tr>
+      <tr><td>lifecycle state</td><td><b>Status</b></td><td>workflow <b>transition</b>, label fallback</td></tr>
+      <tr><td>initiative</td><td>&mdash;</td><td>derived from the record</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout"><span class="lbl">A workflow is a graph, and that matters</span><p>Unlike Linear, Jira reaches a status by <b>transition</b> &mdash; and the one you want may not be reachable from where the issue currently sits. The adapter attempts one direct hop and, failing that, falls back to the <code>orch-state-*</code> label for that update and logs it. A mis-mapped board degrades; it never breaks the run.</p></div>
+
+  <p class="verified"><b>the adapter:</b> <code>pm-jira.js</code> · <code>ADR-0021</code> · <code>test-pm-jira.sh</code> — browse the source in <a href="START_HERE.html">the overview</a>.</p>
+</section>
+
+<section id="verify">
+  <div class="eyebrow">Prove it</div>
+  <h2>Verify it works</h2>
+  <p class="lead">Three commands. Run them in order &mdash; each one fails in a different, informative way.</p>
+<pre><code><span class="c-dim"># 1. can we reach the board, and is the state map real?</span>
+orch state health
+
+<span class="c-dim"># 2. round-trip one card</span>
+echo '{"id":"board-smoke","title":"smoke","state":"Backlog"}' | orch state push-epic
+orch state pull-status          <span class="c-dim"># the card appears here…</span>
+                                <span class="c-dim"># …and on the board. Then delete it.</span>
+
+<span class="c-dim"># 3. does the hierarchy read back?</span>
+orch state list-initiatives</code></pre>
+  <div class="grid g2">
+    <div class="card"><h3><span class="ic">&#9989;</span>What good looks like</h3><p><code>health</code> returns <code>{"ok":true,"backend":"&lt;yours&gt;"}</code> and, if you configured a map, <code>missing: []</code>. Every name in your map exists on the real board.</p></div>
+    <div class="card"><h3><span class="ic">&#9888;</span>What a warning means</h3><p><code>health</code> names each mapped status the board does not have. Those states fall back to labels &mdash; the loop still works, the board just reads coarser. Fix it or accept it deliberately.</p></div>
+  </div>
+  <div class="callout"><span class="lbl">No token yet? That is expected</span><p>Until the unattended loop is enabled, <code>health</code> failing with &ldquo;<code>LINEAR_API_KEY</code> not set&rdquo; is the <i>correct</i> answer, not an error. Provisioning interactively needs no credentials at all.</p></div>
+</section>
+
+<section id="unattended">
+  <div class="eyebrow">One more thing</div>
+  <h2>Before the unattended loop runs</h2>
+  <p class="lead">A remote backend pushes state from <b>inside the sandbox</b>. If its host is not reachable there, every <code>orch state push-*</code> fails closed mid-run &mdash; which reads as the loop mysteriously losing its state rather than as a network error.</p>
+  <p>Uncomment your backend&rsquo;s host in <code>orchestrator/egress-allowlist.txt</code> and mirror it into <b>both</b> enforcers &mdash; the native sandbox (<code>settings.orchestrator.json</code>) and the devcontainer firewall (<code>init-firewall.sh</code>). A parity test checks they agree.</p>
+  <div class="twrap"><table class="map">
+    <thead><tr><th>Backend</th><th>Host to allow</th></tr></thead>
+    <tbody>
+      <tr><td>linear</td><td><code>api.linear.app</code></td></tr>
+      <tr><td>notion</td><td><code>api.notion.com</code></td></tr>
+      <tr><td>jira</td><td><code>&lt;your-site&gt;.atlassian.net</code> &mdash; per tenant, no fixed host</td></tr>
+      <tr><td>gitlab</td><td><code>gitlab.com</code>, or your self-hosted host</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lead" style="font-size:15px">They ship commented out on purpose: every entry widens the blast radius of an unattended run. <code>/orchestrator:enable-orchestrator</code> refuses to enable the loop until the configured backend&rsquo;s host is allowed.</p>
+</section>
+
+<section id="trouble">
+  <div class="eyebrow">Reference</div>
+  <h2>When it goes wrong</h2>
+  <div class="twrap"><table>
+    <thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>Notion: every request 404s, token looks right</td><td>The database was never shared with the integration</td><td>Database page &rarr; <span class="ui">&bull;&bull;&bull;</span> &rarr; <span class="ui">Add connections</span> &rarr; your integration</td></tr>
+      <tr><td>Jira: 404 on a base URL that looks correct</td><td>A <b>scoped</b> API token &mdash; those need <code>api.atlassian.com/ex/jira/&lt;cloudId&gt;</code></td><td>Create an <b>unscoped</b> token instead</td></tr>
+      <tr><td>Linear: 401 with a valid key</td><td>The key was sent as <code>Bearer</code></td><td>Personal keys (<code>lin_api_&hellip;</code>) go in <code>Authorization</code> raw; only OAuth tokens use <code>Bearer</code>. The adapter detects this &mdash; if you are testing by hand with curl, that is the trap.</td></tr>
+      <tr><td>Cards land in the wrong column</td><td>Select options / columns are in alphabetical rather than lifecycle order</td><td>Drag them once &mdash; the order is inherited by the board and persists</td></tr>
+      <tr><td><code>health</code> reports missing statuses</td><td>The map names something the board does not have</td><td>Create it in the tool, or re-point that state at an existing status</td></tr>
+      <tr><td>State stops updating mid-run, no error</td><td>The board host is not in the egress allowlist</td><td>See <a href="#unattended">Before the unattended loop runs</a></td></tr>
+      <tr><td>An epic appears twice</td><td>Two cards share the <code>[id]</code> prefix</td><td>Ids are the join key &mdash; delete the duplicate card</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 style="margin:26px 0 8px;font-size:18px">Things that are true of every backend</h3>
+  <div class="grid g3">
+    <div class="card"><h3><span class="ic">&#128273;</span>Names, never values</h3><p>A token value never enters the repo, a config file, or a chat message. <code>.env.example</code> carries the name; the value lives in your vault or CI secrets.</p></div>
+    <div class="card"><h3><span class="ic">&#128260;</span>Adopting is additive</h3><p>Pointing the harness at an existing board never deletes, renames or re-types anything. Gaps are reported; fixes only add.</p></div>
+    <div class="card"><h3><span class="ic">&#128230;</span>Disabling keeps the board</h3><p><code>/orchestrator:disable-orchestrator</code> leaves the board and every card intact. The board outlives the loop.</p></div>
+  </div>
+
+  <p class="verified"><b>next:</b> <code>/core:board-setup does all of this</code> · <code>/orchestrator:enable-orchestrator</code> · <code>state.config.json</code> — browse the source in <a href="START_HERE.html">the overview</a>.</p>
+  <p class="lead" style="margin-top:22px"><a href="START_HERE.html">&larr; Back to the architecture overview</a></p>
+</section>
+
+</main>
+</div>
+
+<script>
+document.getElementById('themeToggle').addEventListener('click',function(){
+    var el=document.documentElement;
+    var light=el.getAttribute('data-theme')==='light';
+    if(light){el.removeAttribute('data-theme');localStorage.setItem('harness-theme','dark');}
+    else{el.setAttribute('data-theme','light');localStorage.setItem('harness-theme','light');}
+  });
+  /* Active nav highlight */
+  var links=[].slice.call(document.querySelectorAll('nav.side a.nl'));
+  var secs=links.map(function(a){return document.querySelector(a.getAttribute('href'))}).filter(Boolean);
+  function onScroll(){
+    var y=window.scrollY+90,cur=secs[0];
+    secs.forEach(function(s){if(s.offsetTop<=y)cur=s;});
+    links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+cur.id)});
+  }
+  addEventListener('scroll',onScroll,{passive:true});onScroll();
+
+</script>
+</body>
+</html>
