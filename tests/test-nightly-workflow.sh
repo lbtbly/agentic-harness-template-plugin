@@ -47,6 +47,14 @@ grep -q 'docs/reports/nightly/${today}/index.html' "$W"; check "digest written t
 grep -q 'shots/' "$W"; check "screenshots collected under the day folder's shots/" $?
 # serial integration: merges happen one at a time in a for-loop, not parallel()
 grep -q "for (const r of results" "$W"; check "integration is serialized (merge queue)" $?
+grep -q 'args?.epics' "$W"; check "workflow honours args.epics as the driver's admitted-wave allowlist" $?
+grep -q "journalEvents" "$W"; check "workflow collects harness-observed error/correction pairs" $?
+grep -q "Run dod-verify for epic" "$W"; check "the nightly runs INDEPENDENT dod-verify before integrating" $?
+grep -q "for (const r of verified)" "$W"; check "integration consumes the VERIFIER's list, not the builder's" $?
+grep -q "verdict_reject" "$W"; check "a builder overclaim is journalled" $?
+grep -q "corrected:" "$W"; check "the escalation retry records WHETHER escalating actually fixed it" $?
+grep -q "push-journal" "$W"; check "collected events are persisted via orch state push-journal" $?
+! grep -q "bash(jrnl" "$W"; check "no shell-out from the workflow runtime (it has none)" $?
 # consistency gate fails closed: a crashed checker must not open the deploy gate
 grep -q "consistency?.pass === true" "$W"; check "deploy gate fails closed without a consistency pass" $?
 

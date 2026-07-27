@@ -1,6 +1,7 @@
 # CI for the marketplace itself (external audit R8): the repo that ships CI
-# templates runs CI on itself. Three gates: the test suite, plugin manifest
-# validation, and START_HERE payload drift.
+# templates runs CI on itself. Four gates — the test suite, plugin manifest
+# validation, START_HERE payload drift, and version discipline — plus a
+# failure-triage job that dogfoods the CI observation lane (ADR-0024).
 name: ci
 on:
   push: { branches: [main] }
@@ -62,3 +63,27 @@ jobs:
             fi
           done
           exit $fail
+
+  # ---------------------------------------------------------------------------
+  # Self-triage (ADR-0024): the repo that ships a CI repair lane runs one on
+  # itself. Observation only — it reads the failed job logs and writes a summary.
+  # It does NOT patch: this repo's own guard hooks forbid an agent editing
+  # workflows, and a marketplace fix belongs in a human-reviewed PR either way.
+  triage:
+    needs: [tests, validate-plugins, embed-drift]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read          # the whole point: read this run's failed job logs
+    steps:
+      - uses: actions/checkout@v4
+      - name: Summarize the failure
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "## CI failure triage" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          gh run view "${{ github.run_id }}" --log-failed 2>/dev/null | tail -c 8000 \
+            >> "$GITHUB_STEP_SUMMARY" || echo "(no failed-job log available)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

@@ -124,8 +124,20 @@ const MODELS = args?.models ?? {
 }
 function modelFor(complexity) { return MODELS[complexity] ?? MODELS.medium }
 
+// journalEvents — harness-observed error/correction pairs, collected here and
+// persisted by the Digest phase (this runtime has no shell of its own).
+// The escalation retry below is the ONE place where an error and the correction
+// that fixed it exist in the same scope; it used to be log()'d and thrown away.
+const journalEvents = []
+function jrnl(kind, key, extra) { journalEvents.push({ kind, key, extra: extra ?? {} }) }
+
 markPhase('Reconcile', { cleared: (reconciled?.planned ?? []).length, dropped: (reconciled?.dropped ?? []).length })
-const cleared = reconciled?.planned ?? []
+// The run-to-done driver admits a wave (deps-topological, then footprint-disjoint,
+// then the throttled cap) and passes it as args.epics — honour it as an ALLOWLIST.
+// Absent (the scheduled nightly calls us directly) = consider everything cleared.
+const admitted = Array.isArray(args?.epics) && args.epics.length ? new Set(args.epics) : null
+const cleared = (reconciled?.planned ?? []).filter(e => !admitted || admitted.has(e.id))
+if (admitted) log(`driver-admitted wave: ${[...admitted].join(', ')} → ${cleared.length} cleared`)
 const planned = cleared.slice(0, maxEpics)
 const deferred = cleared.slice(maxEpics).map(e => e.id)
 if (deferred.length) log(`maxEpics=${maxEpics}: deferring ${deferred.join(', ')} to the next run (still Planned)`)
@@ -145,6 +157,29 @@ if (planned.length) {
       touchedPaths: { type: 'array', items: { type: 'string' } },
       done: { type: 'boolean' }, notes: { type: 'string' } },
     required: ['id','branch','testsGreen','done'] }
+  // The four blocks Anthropic ships for autonomous, unattended work. Verbatim on
+  // purpose — paraphrasing them thinner is how the behaviour they fence comes back.
+  // Anti-overreach, grounded progress claims, the don't-stop-early reminder, and
+  // the fresh-context verifier framing (which the Verify phase relies on).
+  const AUTONOMOUS_CONTRACT = `
+       Don't add features, refactor, or introduce abstractions beyond what the task
+       requires. A bug fix doesn't need surrounding cleanup. Don't design for
+       hypothetical future requirements: do the simplest thing that works well.
+       Don't add error handling or validation for scenarios that cannot happen.
+       Only validate at system boundaries.
+
+       Before reporting progress, audit each claim against a tool result from this
+       session. Only report work you can point to evidence for; if something is not
+       yet verified, say so explicitly. If tests fail, say so with the output; if a
+       step was skipped, say that.
+
+       You are operating autonomously. The user is not watching and cannot answer
+       questions mid-task. For reversible actions that follow from the original
+       request, proceed without asking. Before ending your turn, check your last
+       paragraph: if it is a plan, a question, or a promise about work you have not
+       done, do that work now with tool calls. End only when the task is complete
+       or you are blocked on input only the user can provide.`
+
   const workerPrompt = (e, escalated) =>
       `You are the build worker for epic ${e.id} (${e.title ?? ''})${e.rework ? ' — this is REWORK (it came back from a negative review; fold in the revise-notes on the epic record)' : ' — this is new work'}.${escalated ? ' [ESCALATED to Opus after a failed first attempt — be especially careful.]' : ''}
        CONTRACT — build strictly against the approved plan:
@@ -185,6 +220,12 @@ if (planned.length) {
           morning digest — many WIP commits bury the review. Then open/update the PR
           for orch/${e.id} (gh/glab): body = what changed & why, plan link, test
           evidence. NEVER push to main. NEVER merge.
+       Then WAIT for the checks rather than walking away: poll
+       bash ${ORCH} state pull-checks --pr <PR-number>
+       with backoff for up to ~10 minutes. Report the final CI status in your
+       notes. "pending" means the checks had not finished — report pending, never
+       guess green. A red build here is expected to be handled by the fix-ci lane,
+       not by you: do not start repairing it.
        5. bash ${ORCH} state push-status --id ${e.id} --state Needs-review --pr <PR-number> --assignee -
           — the --pr link is MANDATORY when a PR exists (it is the deterministic
           PR↔epic mapping the feedback loop depends on). If you could not finish,
@@ -194,7 +235,8 @@ if (planned.length) {
           a short topic doc under docs/ or a note in the relevant .claude/rules file,
           or your agent memory. Extends the "a file is earned after 3 delegations"
           convention. Skip for routine work. Set "capitalized" accordingly.
-       Return JSON: {id, pr, branch, testsGreen, featuresPassed, featuresTotal, capitalized, linesChanged, touchedPaths, done, notes}.`
+       Return JSON: {id, pr, branch, testsGreen, featuresPassed, featuresTotal, capitalized, linesChanged, touchedPaths, done, notes}.
+${AUTONOMOUS_CONTRACT}`
 
   const built = await parallel(planned.map(e => async () => {
     if (capRemaining() < MIN_BUDGET_PER_EPIC) {
@@ -212,6 +254,14 @@ if (planned.length) {
       const r2 = await agent(workerPrompt(e, true),
         { label: `build:${e.id}:opus`, phase: 'Build', isolation: 'worktree', model: MODELS.escalation.model, effort: MODELS.escalation.effort, schema: WORKER_SCHEMA })
       if (r2) r = r2
+      // error + its correction, as a pair: which model missed, which one landed it,
+      // and whether escalating actually worked. A model that needs escalating on
+      // every epic of a given complexity is a ladder that is mis-tuned.
+      jrnl('escalation', pick.model, {
+        epic: e.id, complexity: e.complexity ?? 'medium',
+        to: MODELS.escalation.model,
+        corrected: !!(r2 && r2.done && r2.testsGreen),
+      })
     }
     return r
   }))
@@ -260,7 +310,35 @@ markPhase('Blocked-check', { blocked: blocked.length })
 // ---- Phase: Integrate — SERIALIZED (Cursor's integrator-bottleneck lesson) --
 phase('Integrate')
 const integrated = []
+// Independent verification BEFORE integration. Until now the nightly integrated on
+// `r.done` — the BUILDER's own self-report (WORKER_SCHEMA) — while dod-verify ran
+// only in the run-to-completion driver. The README's "no self-grading anywhere"
+// was true of one flavour and false of the other (ADR-0016 is the whole point).
+const verified = []
 for (const r of results.filter(r => r.done && r.testsGreen)) {
+  const v = await agent(
+    `Run dod-verify for epic ${r.id} (branch ${r.branch}) and return the verdict.
+     You did NOT build this. Verify it against .orch/epics/${r.id}/feature_list.json
+     like a USER, not like CI. Default to reject if uncertain.`,
+    { label: `verify:${r.id}`, phase: 'Integrate', schema: {
+        type: 'object', properties: {
+          epic: { type: 'string' }, done: { type: 'boolean' }, escalate: { type: 'boolean' },
+          blocking: { type: 'array', items: { type: 'string' } } },
+        required: ['epic', 'done'] } })
+  if (v?.done) { verified.push(r); continue }
+  const why = (v?.blocking ?? []).join(', ') || 'independent verification failed'
+  log(`verify ${r.id}: builder said done, verifier disagreed — ${why}`)
+  jrnl('verdict_reject', 'builder_overclaimed', { epic: r.id })
+  await agent(
+    `The builder reported epic ${r.id} done; independent verification rejected it: ${why}.
+     Run: bash ${ORCH} state push-status --id ${r.id} --state Changes-requested \
+       --note "independent verification rejected: ${why}"
+     Change no code.`,
+    { label: `reject:${r.id}`, phase: 'Integrate' })
+}
+markPhase('Verify', { claimed: results.filter(r => r.done && r.testsGreen).length, verified: verified.length })
+
+for (const r of verified) {
   const ok = await agent(
     `Serialized integration step. Merge branch ${r.branch} into the integration
      branch (orch/integration — create from main if missing). Then run the FULL
@@ -273,6 +351,10 @@ for (const r of results.filter(r => r.done && r.testsGreen)) {
         required: ['id','ok'] } }
   )
   if (ok) integrated.push({ ...r, integrated: ok.ok, failure: ok.failure })
+  // Green in isolation, red on the integration branch: the single-writer rule
+  // did not hold. Worth counting across installs — it says the footprints the
+  // planner produced were not actually disjoint.
+  if (ok && !ok.ok) jrnl('merge_revert', 'integration', { epic: r.id })
 }
 
 markPhase('Integrate', { integrated: integrated.filter(r => r.integrated).length })
@@ -412,6 +494,11 @@ await agent(
    3. docs/reports/nightly/${today}/summary.md — SHORT plain-markdown for Slack/email:
       "✅ Went well" (green, OK-ready epics) + "⚠️ Needs attention" (failed/paused/
       consistency-broken/high-risk-awaiting-audit), 6–10 bullets, no HTML.
+   FINALLY, persist this run's harness-observed error/correction pairs to the
+   journal — one command per event, exactly as given, no edits, no additions:
+${journalEvents.map(e =>
+  `     bash ${ORCH} state push-journal --kind ${e.kind} --key ${e.key} --extra '${JSON.stringify(e.extra)}'`
+).join('\n') || '     (no events this run — skip this step)'}
    Return JSON: {written: true, path}.`,
   { label: 'digest', schema: { type: 'object', properties: {
       written: { type: 'boolean' }, path: { type: 'string' } }, required: ['written'] } }

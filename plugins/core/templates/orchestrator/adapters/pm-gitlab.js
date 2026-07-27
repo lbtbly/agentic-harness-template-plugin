@@ -41,9 +41,46 @@ function listIssues(label) {
 function findEpicIssue(id) {
   return listIssues('orch:epic').find((i) => i.title.startsWith(`[${id}]`));
 }
-function extractJson(body) {
+function warn(msg) { process.stderr.write(`pm-gitlab: ${msg}\n`); }
+
+// Guarded: one malformed ```json fence used to throw and kill the ENTIRE
+// listing. Falls back to the "[id] Title" convention so an issue a HUMAN wrote
+// on the board is still picked up — the board is the golden source and must be
+// readable even when the harness did not write the record.
+function extractJson(body, title) {
   const m = (body || '').match(/```json\n([\s\S]*?)\n```/);
-  return m ? JSON.parse(m[1]) : null;
+  if (m) {
+    try { return JSON.parse(m[1]); }
+    catch (e) { warn(`skipping an item with an unparseable payload: ${String(e.message).split('\n')[0]}`); }
+  }
+  const t = (title || '').match(/^\[([^\]]+)\]\s*(.*)$/);
+  return t ? { id: t[1], title: t[2], state: 'Backlog' } : null;
+}
+
+function rollupInitiatives(all, state) {
+  const explicit = all.filter((e) => (e.level ?? 'epic') === 'initiative');
+  let inits;
+  if (explicit.length) {
+    inits = explicit.map((i) => ({
+      ...i,
+      epics: all.filter((e) => (e.parentId ?? e.parent ?? e.initiative) === i.id).map((e) => e.id),
+    }));
+  } else {
+    const by = new Map();
+    for (const e of all.filter((e) => (e.level ?? 'epic') !== 'initiative')) {
+      const k = e.initiative || 'unassigned';
+      if (!by.has(k)) by.set(k, []);
+      by.get(k).push(e);
+    }
+    inits = [...by].map(([k, kids]) => ({
+      id: k, title: k === 'unassigned' ? 'Unassigned work' : k,
+      level: 'initiative', synthesized: true,
+      epics: kids.map((e) => e.id),
+      state: kids.every((e) => e.state === 'Merged') ? 'Merged'
+           : kids.some((e) => e.state === 'In-progress') ? 'In-progress' : 'Backlog',
+    }));
+  }
+  return state ? inits.filter((i) => i.state === state) : inits;
 }
 
 try {
@@ -99,12 +136,25 @@ try {
     }
     case 'list-epics': {
       const state = arg('--state');
+      const initiative = arg('--initiative');
+      const parent = arg('--parent');
+      const level = arg('--level');
       out(
         listIssues('orch:epic')
-          .map((i) => extractJson(i.description))
+          .map((i) => extractJson(i.description, i.title))
           .filter(Boolean)
           .filter((e) => !state || e.state === state)
+          .filter((e) => !initiative || e.initiative === initiative)
+          .filter((e) => !parent || (e.parentId ?? e.parent) === parent)
+          .filter((e) => !level || (e.level ?? 'epic') === level)
       );
+      break;
+    }
+    case 'list-initiatives': {
+      const state = arg('--state');
+      out(rollupInitiatives(
+        listIssues('orch:epic').map((i) => extractJson(i.description, i.title)).filter(Boolean),
+        state));
       break;
     }
     case 'push-status': {
@@ -114,9 +164,18 @@ try {
       const iss = findEpicIssue(id);
       if (!iss) throw new Error(`epic ${id} not found`);
       const full = JSON.parse(glab(['issue', 'view', String(iss.iid), '--output', 'json']));
-      const e = extractJson(full.description) || { id };
+      const e = extractJson(full.description, full.title) || { id };
       e.state = state;
       if (note) e.note = note;
+      // --pr / --assignee were parsed by Jira and Notion and DROPPED here.
+      // `assignee` is now load-bearing: it carries the claim (ADR-0027).
+      const pr = arg('--pr');
+      const assignee = arg('--assignee');
+      const lease = arg('--lease-until');
+      if (pr) e.pr = Number(pr);
+      if (assignee === '-') { delete e.assignee; delete e.leaseUntil; }
+      else if (assignee) e.assignee = assignee;
+      if (lease) e.leaseUntil = lease;
       e.ts = new Date().toISOString();
       glab([
         'issue', 'update', String(iss.iid),
@@ -132,7 +191,11 @@ try {
         listIssues('orch:epic')
           .map((i) => extractJson(i.description))
           .filter(Boolean)
-          .map((e) => ({ id: e.id, state: e.state || 'Backlog', note: e.note || null, ts: e.ts || null }))
+          .map((e) => ({
+            id: e.id, state: e.state || 'Backlog', note: e.note || null,
+            pr: e.pr ?? null, assignee: e.assignee ?? null,
+            leaseUntil: e.leaseUntil ?? null, ts: e.ts || null,
+          }))
       );
       break;
     }
@@ -182,7 +245,8 @@ try {
       break;
     }
     case 'capabilities': {
-      out({ session: 'cache', spec: true, epics: true, status: true, digest: 'cache', feedback: 'forge' });
+      out({ session: 'cache', spec: true, epics: true, status: true, digest: 'cache', feedback: 'forge',
+            hierarchy: 'derived', claims: true });
       break;
     }
     default:

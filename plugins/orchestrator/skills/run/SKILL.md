@@ -25,11 +25,32 @@ scheduled/gated nightly loop, which still exists).
    build until they carry a validated DoD.
 3. Launch the driver:
    `bash orchestrator/runtime/run-to-done.sh <all|first> [N]`
-   It waves-partitions by footprint, builds each wave concurrently (one worktree/epic,
-   capped by `ORCH_MAX_CONCURRENT`, lowered by the usage throttle), runs the Phase 2
-   dod-verify improve-until-done inner loop per epic, and lands low-risk done epics through
-   the serial risk-gated merge queue (high-risk/dissent/no-progress → escalate).
+   Each round it re-reads the board, admits a wave — dependency-topological on `deps[]`
+   first, then footprint-disjoint, then capped by `ORCH_MAX_CONCURRENT` as lowered by the
+   usage throttle — and builds that wave once, concurrently (one worktree per epic). It runs
+   the Phase 2 dod-verify improve-until-done inner loop per epic, then lands low-risk done
+   epics through the serial risk-gated merge queue (high-risk/dissent/no-progress → escalate).
 4. On termination, read the `run-summary` and write/deliver the digest; escalated epics wait
    as PRs for `/orch approve|revise`, folded in at the next launch.
 
-Never: bypass the sandbox/branch-protection; auto-merge a non-low risk level; weaken a test.
+Re-entry is safe by construction: the loop reconstructs `merged`/`escalated`/`blocked` and
+each epic's attempt count **from the board**, never from memory, so a killed run resumes
+without rebuilding settled work or losing its no-progress budget.
+
+`stopped_by` tells you why it ended: `null` (scope drained — the normal exit), `DEPS` (a
+dependency cycle, or a dep that escalated instead of landing), `USAGE` (the throttle hit the
+pause threshold; the retry lane re-enters), `BUDGET`, `WALLCLOCK`, `THRASH` (a whole wave
+returned no usable verdict — the engine is failing, not the code), `SAFETY`.
+
+The driver never pushes `main`. `merge_epic`'s local merge is the run-local **integration
+proof** — clean merge plus a green suite, serial, so each epic is verified against everything
+landed before it. Landing is then requested through the forge with `--auto`, leaving branch
+protection, required checks and CODEOWNERS as the enforcer (ADR-0015).
+
+Auto-merge requires **risk-allows AND the epic's class has earned tier `auto`** (ADR-0026).
+Trust is tracked per `<footprint-root>/<complexity>` in `.orch/trust.tsv` and earned by measured
+verified-pass rate; a fresh install has no ledger, so every class is `watch` and nothing merges
+unattended until it has a record. `orchestrator/bin/trust render` shows the table.
+
+Never: bypass the sandbox/branch-protection; auto-merge a non-low risk level; auto-merge a class
+below tier `auto`; weaken a test.

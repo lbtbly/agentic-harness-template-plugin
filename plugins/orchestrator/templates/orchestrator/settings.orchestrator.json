@@ -1,5 +1,5 @@
 {
-  "$comment": "HIGH-AUTONOMY profile for UNATTENDED Phase-B runs ONLY (claude -p --settings this-file, inside the sandbox/devcontainer with default-deny egress). The committed team settings.json (plan-mode, bypass disabled) is UNTOUCHED. Isolation + permissions.deny are the HARD controls; the security hooks below are defense-in-depth and resolve via $ORCH_CORE_HOOKS (the runtime exports it to the core plugin's hooks/ dir). The native OS sandbox is enabled on top (DEVIATIONS.md \u00a75); failIfUnavailable stays false because the devcontainer is the outer wall on runners where the OS sandbox is missing. enabledMcpjsonServers pins exactly the playwright MCP for the browser-verify step. sandbox.network.allowedDomains mirrors orchestrator/egress-allowlist.txt (single source \u2014 parity-tested with the devcontainer firewall); sandbox.credentials denies the model/delivery credentials to tool subprocesses (the CLI itself reads them from its own env; Bash tools never need them \u2014 GH_TOKEN stays visible because gh runs in Bash).",
+  "$comment": "HIGH-AUTONOMY profile for UNATTENDED Phase-B runs ONLY (claude -p --settings this-file, inside the sandbox/devcontainer with default-deny egress). The committed team settings.json (plan-mode, bypass disabled) is UNTOUCHED. Isolation + permissions.deny are the HARD controls; the security hooks below are defense-in-depth and resolve via $ORCH_CORE_HOOKS (the runtime exports it to the core plugin's hooks/ dir). The native OS sandbox is enabled on top (DEVIATIONS.md §5); failIfUnavailable stays false because the devcontainer is the outer wall on runners where the OS sandbox is missing. enabledMcpjsonServers pins exactly the playwright MCP for the browser-verify step. sandbox.network.allowedDomains mirrors orchestrator/egress-allowlist.txt (single source — parity-tested with the devcontainer firewall); sandbox.credentials denies the model/delivery credentials to tool subprocesses (the CLI itself reads them from its own env; Bash tools never need them — GH_TOKEN stays visible because gh runs in Bash).",
   "permissions": {
     "defaultMode": "acceptEdits",
     "deny": [
@@ -38,6 +38,10 @@
       "Bash(gh pr edit:*)",
       "Bash(gh pr view:*)",
       "Bash(gh pr list:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(glab ci:*)",
       "Bash(glab mr create:*)",
       "Bash(glab mr update:*)",
       "Bash(glab mr view:*)",

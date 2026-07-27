@@ -16,6 +16,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  actions: read            # read check runs + failed job logs (the CI repair lane, ADR-0024)
 
 concurrency:
   group: nightly-orchestrator

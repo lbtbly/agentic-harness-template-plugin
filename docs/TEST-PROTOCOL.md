@@ -19,7 +19,7 @@ not the phrasing.
 $ claude --version && gh auth status && jq --version && node --version && git --version
 ```
 
-**Expect:** all five print versions/status; `gh` is logged in as `lambertstudi`
+**Expect:** all five print versions/status; `gh` is logged in as `lbtbly`
 (the marketplace repo is private — gh's credentials are how the install
 clones it).
 
@@ -35,7 +35,7 @@ $ claude
 ## 2 — Add the marketplace, install core
 
 ```
-» /plugin marketplace add lambertstudi/agentic-harness-template-plugin
+» /plugin marketplace add lbtbly/agentic-harness-template-plugin
 » /plugin install core@harness
 » /reload-plugins
 ```

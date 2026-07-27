@@ -130,6 +130,35 @@ async function listEpicRecords() {
   return epics;
 }
 
+// rollupInitiatives — Notion has no relation property in this schema (adding one
+// is an additive board change, per board-setup's ADDITIVE-ONLY rule), so the
+// hierarchy is derived from the record payload, which round-trips for free.
+function rollupInitiatives(all, state) {
+  const explicit = all.filter((e) => (e.level ?? 'epic') === 'initiative');
+  let inits;
+  if (explicit.length) {
+    inits = explicit.map((i) => ({
+      ...i,
+      epics: all.filter((e) => (e.parentId ?? e.parent ?? e.initiative) === i.id).map((e) => e.id),
+    }));
+  } else {
+    const by = new Map();
+    for (const e of all.filter((e) => (e.level ?? 'epic') !== 'initiative')) {
+      const k = e.initiative || 'unassigned';
+      if (!by.has(k)) by.set(k, []);
+      by.get(k).push(e);
+    }
+    inits = [...by].map(([k, kids]) => ({
+      id: k, title: k === 'unassigned' ? 'Unassigned work' : k,
+      level: 'initiative', synthesized: true,
+      epics: kids.map((e) => e.id),
+      state: kids.every((e) => e.state === 'Merged') ? 'Merged'
+           : kids.some((e) => e.state === 'In-progress') ? 'In-progress' : 'Backlog',
+    }));
+  }
+  return state ? inits.filter((i) => i.state === state) : inits;
+}
+
 (async () => {
   switch (op) {
     case 'health': {
@@ -140,7 +169,8 @@ async function listEpicRecords() {
       break;
     }
     case 'capabilities':
-      out({ session: 'cache', spec: true, epics: true, status: true, digest: 'cache', feedback: 'forge' });
+      out({ session: 'cache', spec: true, epics: true, status: true, digest: 'cache', feedback: 'forge',
+           hierarchy: 'derived', claims: true });
       break;
     case 'push-epic': {
       const e = JSON.parse(stdin());
@@ -163,7 +193,18 @@ async function listEpicRecords() {
     }
     case 'list-epics': {
       const state = arg('--state');
-      out((await listEpicRecords()).filter((e) => !state || e.state === state));
+      const initiative = arg('--initiative');
+      const parent = arg('--parent');
+      const level = arg('--level');
+      out((await listEpicRecords())
+        .filter((e) => !state || e.state === state)
+        .filter((e) => !initiative || e.initiative === initiative)
+        .filter((e) => !parent || (e.parentId ?? e.parent) === parent)
+        .filter((e) => !level || (e.level ?? 'epic') === level));
+      break;
+    }
+    case 'list-initiatives': {
+      out(rollupInitiatives(await listEpicRecords(), arg('--state')));
       break;
     }
     case 'push-status': {

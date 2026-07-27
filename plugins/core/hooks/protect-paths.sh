@@ -11,6 +11,9 @@ FP=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 
 case "$FP" in
   */.claude/settings.json|.claude/settings.json)
-    echo "BLOCKED: $FP is the team contract — an agent cannot widen its own permissions. Modify settings.local.json or go through a human PR." >&2; exit 2;;
+    echo "BLOCKED: $FP is the team contract — an agent cannot widen its own permissions. Modify settings.local.json or go through a human PR." >&2
+    # A self-elevation attempt is the single most valuable journal entry there is.
+    . "$(dirname "$0")/policy-lib.sh" 2>/dev/null && journal guard_block self_elevation '{"severity":"security"}'
+    exit 2;;
 esac
 exit 0

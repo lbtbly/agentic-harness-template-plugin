@@ -16,6 +16,8 @@ STRIPPED=$(echo "$TARGET" | sed 's/\.env\.example//g')
 SECRET_PAT='(^|[=/[:space:]'"'"'"])\.env(rc|\.[A-Za-z0-9_.-]+)?(['"'"'"[:space:]]|$|[/|;&])|\.pem(['"'"'"[:space:]]|$)|\.key(['"'"'"[:space:]]|$)|(^|[=/[:space:]'"'"'"])secrets(/|['"'"'"[:space:]]|$)'
 if echo "$STRIPPED" | grep -qE "$SECRET_PAT"; then
   echo "BLOCKED by secret-guard: \"$TARGET\" touches a secret path. Secrets must never enter the context. Use environment variables (docs/SECURITY.md)." >&2
+  # Record the attempt. NEVER the target — it is a secret path by definition.
+  . "$(dirname "$0")/policy-lib.sh" 2>/dev/null && journal guard_block secret_guard '{"severity":"security"}'
   exit 2
 fi
 exit 0
