@@ -60,32 +60,73 @@ say so plainly and defer the token step until the loop is enabled.
    `JIRA_PROJECT_KEY`. Tell the user where to set each (shell env / vault / CI
    secrets); add the names to `.env.example`; never a value anywhere.
 
-## DO — Notion
+## DO — Notion (native relations — ADR-0030)
 
-1. Create the database (via the Notion MCP connector when present, else REST
-   `POST /v1/databases`; parent = the asked page). Whichever lane created it,
-   record the databaseId so the headless REST adapter can drive it later:
-   - Title: `<project> — orchestrator board`
-   - Properties: `Name` (title — `[<epicId>] <epic title>`), `State` (select
-     with EXACTLY the 12 lifecycle options above, in order), `Epic ID`
-     (rich_text), `Assigned to` (rich_text — the worker currently on the card:
-     set when a subagent picks it up, cleared with `--assignee -` when it hands
-     off), `Complexity` (select: `low` · `medium` · `high` — the planner's
-     estimate; the orchestrator right-sizes the model from it), `PR` (number),
-     `Note` (rich_text), `Created` (created_time), `Edited` (last_edited_time),
-     `Updated` (date — the adapter's state-change timestamp).
-   - The full epic record JSON lives in the page body as a code block — the
-     adapter reads/writes it there; properties are the human view.
-2. Group the database view by `State` — that IS the board. **Column order must
-   follow the lifecycle, never alphabetical**: board columns mirror the State
-   select's option order, so create the options in EXACTLY the lifecycle order
-   and, after creating, READ the property back and re-PATCH the options array if
-   the order drifted (some clients append alphabetically). The public API does
-   not expose view configuration — if the view still shows alphabetical groups,
-   print the one manual step: open the board view → drag the columns once into
-   lifecycle order (Notion persists it).
-3. Record in `orchestrator/state.config.json`:
-   `{ "backend": "notion", "forge": "<existing>", "notion": { "databaseId": "<id>" } }`.
+Model: initiative → a page in a **separate Initiatives data source**; epic → a page in the epics
+data source with `Type = Epic`; task → a page in the SAME source with `Type = Task`, linked by
+the **`Parent epic` self-relation** (Notion syncs `Sub-tasks` back automatically). The full epic
+record JSON still lives in the page body as a code block — the precise source of truth; the
+properties are the human/board view.
+
+**Use the MCP connector when present** — it takes SQL DDL and does all of this in three calls.
+The API version matters: this adapter speaks **data sources** (`2025-09-03`+), because relation
+writes may only use `data_source_id` — `database_id` is rejected.
+
+1. **Create the Initiatives data source** first (the epics source relates TO it):
+
+   ```
+   CREATE TABLE ("Name" TITLE,
+                 "State" SELECT('Backlog':gray, 'In-progress':blue, 'Merged':green),
+                 "Initiative ID" RICH_TEXT)
+   ```
+
+2. **Create the epics data source**, relating to it. `<init_ds>` is the id from step 1:
+
+   ```
+   CREATE TABLE ("Name" TITLE,
+                 "Type" SELECT('Epic':purple, 'Task':gray),
+                 "State" SELECT('Suggested':gray,'Backlog':gray,'Needs-plan':brown,
+                                'Planned':orange,'In-progress':blue,'Needs-review':yellow,
+                                'Changes-requested':red,'Approved':green,'Merged':green,
+                                'Blocked':red,'Paused':gray,'Cancelled':default),
+                 "Epic ID" RICH_TEXT,
+                 "Initiative" RELATION('<init_ds>', DUAL 'Epics' 'epics'),
+                 "Assigned to" RICH_TEXT,
+                 "Complexity" SELECT('low':green, 'medium':yellow, 'high':red),
+                 "PR" NUMBER, "Note" RICH_TEXT, "Updated" DATE)
+   ```
+
+   **Name BOTH sides of every relation.** A bare `DUAL` gets an auto-generated inverse name like
+   `Related to <db> (Initiative)` on the other board — ugly and confusing, and it cannot be
+   renamed from the DDL afterwards.
+
+3. **Add the self-relation** — a second call, since it needs the epics source's own id:
+
+   ```
+   ADD COLUMN "Parent epic" RELATION('<epics_ds>', DUAL 'Sub-tasks' 'subtasks')
+   ```
+
+   One statement creates both sides. Setting `Parent epic` on a task populates `Sub-tasks` on the
+   epic automatically — nothing writes the inverse.
+
+4. **Group the board view by `State`** — that IS the board. Column order follows the State
+   option order, so create the options in EXACTLY the lifecycle order above. The public API
+   cannot configure a view: if the columns still show alphabetically, tell the user to drag one
+   column once (Notion persists it). A second, useful view: filter `Type = Epic` for a clean
+   epic board.
+
+5. **Record both ids**:
+   `{ "backend": "notion", "forge": "<existing>",
+      "notion": { "dataSourceId": "<epics_ds>", "initiativesDataSourceId": "<init_ds>" } }`
+
+6. **Share BOTH databases with the integration.** The related one too — otherwise every relation
+   read 404s in a way that looks like a wrong id. `orch state health` probes it and says so.
+
+**Degradation is deliberate.** Every relation feature is optional and detected, never assumed.
+A board without `Type`, without `Parent epic`, or without an Initiatives source keeps working
+with that part of the hierarchy in the payload only; `health` names what is missing and
+`capabilities.hierarchy` reports `derived` instead of `native`. A legacy config carrying only
+`databaseId` still resolves (with a warning to record the data source id).
 
 ## DO — Jira (native semantics — ADR-0021)
 
@@ -143,7 +184,12 @@ Never assume an existing board matches the contract; never silently rebuild it.
    - properties: `Name` (title), `Epic ID` (rich_text), `Assigned to`
      (rich_text), `Complexity` (select low·medium·high), `PR` (number), `Note`
      (rich_text), `Created` (created_time), `Edited` (last_edited_time),
-     `Updated` (date) — flag each missing one and any type mismatch.
+     `Updated` (date) — flag each missing one and any type mismatch;
+   - the hierarchy properties (ADR-0030), each independently optional:
+     `Type` (select Epic·Task), `Parent epic` (relation to this same source),
+     `Initiative` (relation to the Initiatives source). Missing ones are NOT an
+     error — report them as "hierarchy degraded to payload-only" and offer to add
+     them, since adding a relation is additive and safe.
 3. **Report the gaps** in a compact table (missing / wrong type / out of
    order), then ask the user (AskUserQuestion): **update the board
    automatically**, or **do it themselves**?
@@ -195,24 +241,30 @@ matches the harness's (ADR-0027):
 
 1. **Pick the team.** Everything is scoped to one Linear team; record its key
    (the `ENG` in `ENG-123`) as `linear.teamKey` in `orchestrator/state.config.json`.
-2. **Map the 12 lifecycle states onto the team's real workflow states.** Linear
-   ships Backlog / Todo / In Progress / In Review / Done / Canceled, so the map is
-   many-to-one out of the box and **nothing needs creating**:
+2. **Map the 12 lifecycle states onto the team's real workflow states.** A new team
+   ships with exactly five: **Backlog · Todo · In Progress · Done · Canceled**
+   (there is no "In Review" by default). The map is many-to-one, so **nothing needs
+   creating** — this works on a stock team as-is:
 
    ```json
    { "backend": "linear", "forge": "github",
      "linear": { "teamKey": "ENG", "stateMap": {
        "Suggested": "Backlog", "Backlog": "Backlog", "Needs-plan": "Backlog",
        "Planned": "Todo", "In-progress": "In Progress",
-       "Needs-review": "In Review", "Changes-requested": "In Review",
+       "Needs-review": "In Progress", "Changes-requested": "In Progress",
        "Approved": "Done", "Merged": "Done",
        "Blocked": "Todo", "Paused": "Todo", "Cancelled": "Canceled" } } }
    ```
 
+   Adding one state — **In Review** (category: Started) — is worth the 30 seconds:
+   point `Needs-review` and `Changes-requested` at it and the board separates "being
+   built" from "waiting on you", which is the distinction you act on each morning.
+
    Run `orch state health` — it validates every target against the team's **real**
    workflow states and names any that are missing. Add those in Linear under
-   *Team settings → Workflow* (the API cannot create workflow states), or leave
-   them out and that state falls back to an `orch-state-*` label.
+   **Settings → Teams → *your team* → Issue statuses** (the API cannot create
+   workflow states), or leave them out and that state falls back to an
+   `orch-state-*` label.
 3. **Create a Project per initiative** if you want the native tier. The adapter
    files an epic under a Project whose name matches its `initiative` field, and
    **never creates one implicitly** — inventing projects from a free-text field is
@@ -223,7 +275,7 @@ matches the harness's (ADR-0027):
    a governed workspace; the lifecycle then relies entirely on `stateMap`.
 
 **Token (headless lane only).** `LINEAR_API_KEY` — a personal key from
-*Settings → Security & access → Personal API keys*. Personal keys are sent raw in
+**Settings → Account → Security & Access → Personal API keys**. Personal keys are sent raw in
 the `Authorization` header; only OAuth tokens use `Bearer`, and the adapter
 detects which from the prefix. **Name only, never the value** (`docs/SECURITY.md`).
 

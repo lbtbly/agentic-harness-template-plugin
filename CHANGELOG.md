@@ -3,6 +3,50 @@
 All notable changes to the harness marketplace. Format: Keep a Changelog; versions are
 the marketplace `metadata.version` (per-plugin versions in each plugin.json).
 
+## [1.5.3] — 2026-07-27
+### Added
+- **Notion gets a real hierarchy** (ADR-0030). Reported from use: the board was flat — no
+  initiative, no parent, no type marker, all three living only inside the record JSON, so
+  initiatives were invisible in Notion and a task was pushed as a flat sibling of its epic.
+  Now: a `Type` select (Epic/Task) — the parallel of Jira's and Linear's `orch-epic`/`orch-child`
+  labels, which Notion alone lacked; a `Parent epic` **self-relation** whose synced `Sub-tasks`
+  inverse Notion maintains itself; and a **separate Initiatives data source**, making the
+  initiative a real page with its own board and state rather than a string. Notion joins Jira and
+  Linear at `hierarchy: native`.
+- The adapter moves to the current Notion API (`2026-03-11`) and the **data-source** model,
+  matching the MCP lane. This was forced, not optional: since `2025-09-03` relation writes may
+  only use `data_source_id` — `database_id` is rejected.
+- New `test-pm-notion.sh` (49 assertions) against a scripted Notion double, weighted toward the
+  degradation paths, since every existing board has none of the new properties.
+
+### Changed
+- **Every relation feature is optional and detected, never assumed.** A board without `Type`,
+  without `Parent epic`, or without an Initiatives source keeps working exactly as before with
+  that part of the hierarchy in the payload only; `health` names what is missing and
+  `capabilities.hierarchy` reports `derived` instead of `native`. A legacy `databaseId` config
+  still resolves its data source, with a warning to record the new id.
+- Native values now win over the payload: a parent or initiative a human set in Notion overrides
+  a stale value the harness wrote earlier (ADR-0027). A missing one warns and continues, and the
+  relation is *omitted* rather than written as `[]` — clearing a human's link would be worse.
+
+## [1.5.2] — 2026-07-27
+### Added
+- **`BOARD_SETUP.html`** — a step-by-step provisioning guide for Notion, Jira and Linear,
+  linked from START_HERE. Exact menu paths, the properties and states to create, which kind of
+  token to make, the three commands that prove it works, and a symptom→cause→fix table. UI
+  paths were researched against vendor documentation rather than recalled. New
+  `test-board-guide.sh` pins the factual claims against the adapters — env var names, config
+  keys, the sample `stateMap`, the egress hosts — so the guide cannot rot silently.
+
+### Fixed
+- **The Linear `stateMap` example targeted a state that does not exist.** A new Linear team
+  ships with `Backlog · Todo · In Progress · Done · Canceled` — there is **no "In Review"** —
+  so the map shipped in 1.5.1 would have failed `health` on a stock team and silently fallen
+  back to labels for `Needs-review` and `Changes-requested`. The default map now targets only
+  stock states, with adding *In Review* offered as a deliberate improvement.
+- Two wrong Linear settings paths: workflow states are at **Settings → Teams → *team* → Issue
+  statuses**, and personal keys at **Settings → Account → Security & Access**.
+
 ## [1.5.1] — 2026-07-27
 ### Added
 - **Linear is implemented** (ADR-0029) — the last stub with a real model behind it.
