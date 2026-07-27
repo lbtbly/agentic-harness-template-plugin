@@ -2,12 +2,12 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "core",
   "description": "Core harness: the /new-project scaffolder, guard hooks (secrets, self-elevation, git hygiene), the orch state layer, review agents, and the DoD feature-list contract. Install first.",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "author": {
     "name": "lambertbouley"
   },
-  "homepage": "https://github.com/lambertstudi/agentic-harness-template-plugin",
-  "repository": "https://github.com/lambertstudi/agentic-harness-template-plugin",
+  "homepage": "https://github.com/lbtbly/agentic-harness-template-plugin",
+  "repository": "https://github.com/lbtbly/agentic-harness-template-plugin",
   "license": "MIT",
   "keywords": [
     "scaffold",

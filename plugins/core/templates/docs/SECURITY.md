@@ -103,3 +103,30 @@ history — define a retention policy if epic notes may contain personal data.
    delivery credentials to tool subprocesses.
 4. **Devcontainer egress firewall** — default-deny iptables from the same
    allowlist; the outer wall on runners where the OS sandbox is unavailable.
+
+## The journal — what the harness records about itself
+
+`.orch/journal/<YYYY-MM-DD>.jsonl` is an append-only NDJSON stream of the harness's own
+mistakes and their corrections (ADR-0023): guard blocks, failed commands, human corrections,
+subagent failures, formatter rewrites, model escalations, integration reverts.
+
+**What it records is a classification, never content.** The verb of a failed command (`npm`),
+never the command line. The shape of a correction (`contradiction`), never your words. The rule
+that fired (`secret_guard`), never the path that triggered it. Paths are repo-relative — an
+absolute path embeds your machine username, which is personal data and has been leaked from a
+shipped template once before.
+
+It is written by hooks, so nothing depends on the agent choosing to be honest. Every observer is
+advisory: exits 0, blocks nothing, and emits no stdout.
+
+**Turning it off** — it defaults on, and writes only inside your repo:
+
+```
+.claude/policy.json   {"journal": false}
+env                   CLAUDE_POLICY_JOURNAL=0
+```
+
+Guards still block with journaling off; the record is additive, never a substitute for enforcement.
+
+Nothing leaves the machine. `push-journal`/`pull-journal` are local-only ops and never reach a
+board adapter. Sharing a journal is a separate, explicit, redacted export.

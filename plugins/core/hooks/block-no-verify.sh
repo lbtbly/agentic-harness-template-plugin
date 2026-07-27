@@ -14,11 +14,13 @@ policy_enabled block_no_verify || exit 0
 
 if echo "$CMD" | grep -qE 'git([[:space:]]+-[^[:space:]]+([[:space:]]+[^[:space:]]+)?)*[[:space:]]+commit[^|;&]*([[:space:]]--no-verify|[[:space:]]-[a-zA-Z]*n[a-zA-Z]*([[:space:]]|$))'; then
   echo "BLOCKED: git commit --no-verify is forbidden (git hooks exist for a reason)." >&2
+  journal guard_block no_verify_commit
   exit 2
 fi
 if echo "$CMD" | grep -qE 'git([[:space:]]+-[^[:space:]]+([[:space:]]+[^[:space:]]+)?)*[[:space:]]+push[^|;&]*([[:space:]]--force([[:space:]]|$)|[[:space:]]-f([[:space:]]|$))' \
    && echo "$CMD" | grep -qE '(main|master)([[:space:]]|$)'; then
   echo "BLOCKED: push --force to main/master is forbidden. Use --force-with-lease on a branch." >&2
+  journal guard_block force_push_main
   exit 2
 fi
 exit 0

@@ -112,7 +112,7 @@ async function search(jql, fields) {
   }
   return issues;
 }
-const EPIC_FIELDS = ['summary', 'labels', 'description', 'status'];
+const EPIC_FIELDS = ['summary', 'labels', 'description', 'status', 'parent', 'issuetype'];
 async function findIssue(id) { // epics AND children share the [id] summary convention
   const found = await search(
     `labels in ("orch-epic","orch-child") AND summary ~ "\\\\[${id}\\\\]"`, EPIC_FIELDS);
@@ -209,13 +209,53 @@ async function upsertEpic(e) {
   return issueKey;
 }
 async function listEpicRecords() {
-  const issues = await search('labels = "orch-epic"', EPIC_FIELDS);
+  const issues = await search('labels in ("orch-epic","orch-child")', EPIC_FIELDS);
   return issues.map((i) => {
     const { record, state } = stateFromIssue(i);
-    if (record) return { ...record, state: record.state || state };
+    // The NATIVE link, now that EPIC_FIELDS actually requests `parent`. The board
+    // is the golden source, so a parent set by a human in Jira must win over a
+    // stale `parent` inside the payload the harness wrote earlier.
+    const pm = (i.fields?.parent?.fields?.summary || '').match(/^\[([^\]]+)\]/);
+    const nativeParent = pm ? pm[1] : null;
+    const level = (i.fields?.labels || []).includes('orch-child') ? 'child' : 'epic';
+    if (record) {
+      return { ...record, state: record.state || state, level: record.level ?? level,
+               ...(nativeParent ? { parentId: nativeParent } : {}) };
+    }
+    // No payload: a human created this card. Read it anyway (the board is the
+    // source of truth, not a mirror of what we happened to push).
     const m = (i.fields.summary || '').match(/^\[([^\]]+)\]\s*(.*)$/);
-    return m ? { id: m[1], title: m[2], state } : null;
+    return m ? { id: m[1], title: m[2], state, level,
+                 ...(nativeParent ? { parentId: nativeParent } : {}) } : null;
   }).filter(Boolean);
+}
+
+// rollupInitiatives — Jira's own Initiative→Epic→Story where it exists, and a
+// synthesized level where the project is flat. Same shape as every other backend.
+function rollupInitiatives(all, state) {
+  const explicit = all.filter((e) => (e.level ?? 'epic') === 'initiative');
+  let inits;
+  if (explicit.length) {
+    inits = explicit.map((i) => ({
+      ...i,
+      epics: all.filter((e) => (e.parentId ?? e.parent ?? e.initiative) === i.id).map((e) => e.id),
+    }));
+  } else {
+    const by = new Map();
+    for (const e of all.filter((e) => (e.level ?? 'epic') !== 'initiative')) {
+      const k = e.initiative || 'unassigned';
+      if (!by.has(k)) by.set(k, []);
+      by.get(k).push(e);
+    }
+    inits = [...by].map(([k, kids]) => ({
+      id: k, title: k === 'unassigned' ? 'Unassigned work' : k,
+      level: 'initiative', synthesized: true,
+      epics: kids.map((e) => e.id),
+      state: kids.every((e) => e.state === 'Merged') ? 'Merged'
+           : kids.some((e) => e.state === 'In-progress') ? 'In-progress' : 'Backlog',
+    }));
+  }
+  return state ? inits.filter((i) => i.state === state) : inits;
 }
 
 (async () => {
@@ -248,7 +288,8 @@ async function listEpicRecords() {
       break;
     }
     case 'capabilities':
-      out({ session: 'cache', spec: true, epics: true, children: true, status: true, digest: 'cache', feedback: 'forge' });
+      out({ session: 'cache', spec: true, epics: true, children: true, status: true, digest: 'cache', feedback: 'forge',
+           hierarchy: 'native', claims: true });
       break;
     case 'push-epic': {
       const e = JSON.parse(stdin());
@@ -271,7 +312,20 @@ async function listEpicRecords() {
     }
     case 'list-epics': {
       const state = arg('--state');
-      out((await listEpicRecords()).filter((e) => !state || e.state === state));
+      const initiative = arg('--initiative');
+      const parent = arg('--parent');
+      const level = arg('--level');
+      out((await listEpicRecords())
+        .filter((e) => !state || e.state === state)
+        .filter((e) => !initiative || e.initiative === initiative)
+        .filter((e) => !parent || (e.parentId ?? e.parent) === parent)
+        // Default to epic-level so the un-flagged call returns exactly what it
+        // always did — children are newly VISIBLE and must not change it.
+        .filter((e) => (level ? (e.level ?? 'epic') === level : (e.level ?? 'epic') !== 'child')));
+      break;
+    }
+    case 'list-initiatives': {
+      out(rollupInitiatives(await listEpicRecords(), arg('--state')));
       break;
     }
     case 'push-status': {

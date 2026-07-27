@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# trust — graduated autonomy, earned per epic class (ADR-0026).
+#
+# "Turn autonomy up as trust grows" is not a mechanism; a TSV with tier rules is.
+# Autonomy is granted per CLASS of work, not per run, because "can this harness
+# be trusted" is the wrong question — it can be trusted with dependency bumps in
+# docs/ long before it can be trusted with a migration.
+#
+# A class is <footprint-root>/<complexity>: the top directory the epic touches
+# plus how hard the planner thought it was. Coarse on purpose. A finer key never
+# accumulates enough runs to leave `watch`, which is the failure mode that makes
+# ledgers like this decorative.
+#
+# usage: trust record <class> <pass|fail>
+#        trust tier <class>            → watch | queue | auto
+#        trust render                  → the table
+#        trust class <footprint-json> <complexity>
+set -u
+R="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+F="$R/.orch/trust.tsv"
+
+# Tier rules. Deliberately harder to earn than to lose: reaching `auto` needs a
+# sustained record, while the tier is recomputed on EVERY run and drops the
+# moment the rate falls below the floor. It is a rate, not a streak — one miss in
+# a clean 20 is 95.2% and keeps `auto`; the second one does not.
+MIN_RUNS_AUTO="${ORCH_TRUST_MIN_RUNS:-20}"
+PCT_AUTO="${ORCH_TRUST_PCT_AUTO:-95}"
+MIN_RUNS_QUEUE="${ORCH_TRUST_MIN_RUNS_QUEUE:-10}"
+PCT_QUEUE="${ORCH_TRUST_PCT_QUEUE:-90}"
+
+tier_of() { # tier_of <runs> <passes>
+  awk -v r="${1:-0}" -v p="${2:-0}" \
+      -v ra="$MIN_RUNS_AUTO" -v pa="$PCT_AUTO" -v rq="$MIN_RUNS_QUEUE" -v pq="$PCT_QUEUE" 'BEGIN{
+    pct = (r > 0) ? (p / r) * 100 : 0
+    if (r >= ra && pct >= pa)      print "auto"
+    else if (r < rq || pct < pq)   print "watch"
+    else                           print "queue"
+  }'
+}
+
+row() { # row <class> → "runs<TAB>passes", or "0	0"
+  [ -f "$F" ] || { printf '0\t0'; return; }
+  awk -F'\t' -v c="$1" '$1 == c { print $2 "\t" $3; found=1; exit } END { if (!found) print "0\t0" }' "$F"
+}
+
+# class <footprint-json> <complexity> — the grouping key.
+# Falls back to "unknown" rather than inventing a key: an epic with no footprint
+# is a planner defect, and it must not silently share a class with real work.
+class_of() {
+  local fp="${1:-[]}" cx="${2:-medium}" root
+  root=$(printf '%s' "$fp" | jq -r 'if type=="array" and length>0
+      then (.[0] | split("/")[0] | select(. != "" and . != "**")) // "root"
+      else "unknown" end' 2>/dev/null) || root=unknown
+  [ -n "$root" ] || root=unknown
+  printf '%s/%s' "$root" "$cx"
+}
+
+case "${1:-}" in
+  record)
+    C="${2:?class required}"; RES="${3:?pass|fail required}"
+    case "$RES" in pass|fail) ;; *) echo "trust record: expected pass|fail" >&2; exit 1 ;; esac
+    mkdir -p "$(dirname "$F")"; touch "$F"
+    BEFORE=$(tier_of $(row "$C" | tr '\t' ' '))
+    awk -F'\t' -v c="$C" -v inc="$([ "$RES" = pass ] && echo 1 || echo 0)" 'BEGIN{OFS="\t"; f=0}
+      $1 == c { f=1; print c, $2+1, $3+inc; next }
+      NF { print }
+      END { if (!f) print c, 1, inc }' "$F" > "$F.tmp" && mv "$F.tmp" "$F"
+    AFTER=$(tier_of $(row "$C" | tr '\t' ' '))
+    # A demotion must be LOUD — cron mails stderr, and a class quietly losing
+    # autonomy is exactly the thing an operator needs to hear about.
+    if [ "$BEFORE" = auto ] && [ "$AFTER" != auto ]; then
+      echo "TRUST: '$C' demoted $BEFORE → $AFTER — it no longer auto-merges" >&2
+    fi
+    printf '%s\t%s\n' "$C" "$AFTER"
+    ;;
+  tier)
+    tier_of $(row "${2:?class required}" | tr '\t' ' ')
+    ;;
+  class)
+    class_of "${2:-[]}" "${3:-medium}"
+    ;;
+  render)
+    printf '%-28s %5s %5s %6s  %s\n' class runs pass rate tier
+    [ -f "$F" ] || { echo "(no runs recorded yet — every class starts at 'watch')"; exit 0; }
+    while IFS=$'\t' read -r c r p; do
+      [ -n "${c:-}" ] || continue
+      printf '%-28s %5s %5s %5s%%  %s\n' "$c" "$r" "$p" \
+        "$(awk -v r="$r" -v p="$p" 'BEGIN{printf "%.0f", (r>0)?p/r*100:0}')" \
+        "$(tier_of "$r" "$p")"
+    done < "$F"
+    ;;
+  *)
+    echo "usage: trust record <class> <pass|fail> | tier <class> | class <footprint-json> <complexity> | render" >&2
+    exit 1 ;;
+esac

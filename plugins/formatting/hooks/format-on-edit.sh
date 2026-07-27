@@ -12,6 +12,13 @@ case "$FP" in "$R"/*) ;; *) exit 0 ;; esac
 [ -L "$FP" ] && exit 0
 . "$(dirname "$0")/policy-lib.sh" 2>/dev/null
 
+# Checksum before/after: a rewrite means the agent produced non-conforming code.
+# That is a real, measurable signal about the harness (the convention was never
+# taught) and it was being destroyed silently. Records the FILE TYPE and which
+# stage changed it — never a diff, never the content.
+_sum() { (cksum < "$1") 2>/dev/null; }
+BEFORE=$(_sum "$FP")
+
 # have_up <name...> — 0 if any name exists at/above the edited file within $R
 # (nearest-config: apps/<name>/ config wins over a root one).
 have_up() {
@@ -49,4 +56,9 @@ case "$FP" in
       ruff check --fix "$FP" >/dev/null 2>&1
     fi ;;
 esac
+
+if [ "$(_sum "$FP")" != "$BEFORE" ]; then
+  EXT="${FP##*.}"; case "$EXT" in "$FP") EXT=none ;; esac
+  journal reformat "$EXT" "$(jq -cn --arg f "$(journal_relpath "$FP")" '{path:$f}' 2>/dev/null || echo '{}')"
+fi
 exit 0

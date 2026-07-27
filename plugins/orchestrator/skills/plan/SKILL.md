@@ -5,6 +5,18 @@ description: "Turns Needs-plan initiatives into Planned epics: planner authors t
 
 # /orchestrator:plan
 
+The board is the golden source (ADR-0027). Read the initiatives from it —
+`orch state list-initiatives`, then `list-epics --initiative <id>` for anything already
+decomposed there — and treat `.orch/` as the working mirror, not the record. An initiative a
+human added to Jira/Notion/Linear is work; the framework does not need to have invented it.
+
+0. **Blindspot pass, before authoring anything.** For each initiative, name the unknown
+   unknowns first: what part of the codebase is unfamiliar, what has been tried before, what
+   "good" looks like here. Then ask the operator the questions whose answers would change the
+   ARCHITECTURE, one at a time — not the ones that would only change a detail. A DoD authored
+   at 6pm on a wrong assumption wastes the whole night, and this is the cheapest point in the
+   pipeline to catch it.
+
 For each initiative to plan (from `orch state list-epics` in state `Needs-plan`, or an
 initiative id passed in):
 
@@ -19,7 +31,10 @@ initiative id passed in):
    back to step 1; READY-WITH-FIXES applies the fixes then re-reviews. The reviewer is
    independent of the planner (no self-grading).
 4. **Persist** — `orch state push-epic` each epic (state `Planned`, footprint, deps,
-   riskHints, complexity, dodPath, designReview). Nothing is marked `Planned` until validate-dod exits 0
+   parentId, riskHints, complexity, dodPath, designReview), which writes back to the board.
+   `deps` is now ENFORCED: the driver topologically sorts on it and refuses to admit an epic
+   until every dep has landed, so a cycle stops the run (`stopped_by:"DEPS"`). Check for one
+   before persisting. Nothing is marked `Planned` until validate-dod exits 0
    AND the design review is not NEEDS-REWORK.
 
 GUARDRAILS: the planner authors from the initiative's INTENT, never bloats acceptance

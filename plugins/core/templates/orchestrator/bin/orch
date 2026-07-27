@@ -31,12 +31,15 @@ usage: orch state <op>
   health | capabilities
   push-session [--auto] < session.json        pull-session [--branch B|--latest]
   push-spec --id ID < spec.md                 get-spec --id ID | list-specs
-  push-epic < epic.json | push-backlog < []   get-epic --id ID | list-epics [--state S]
+  push-epic < epic.json | push-backlog < []   get-epic --id ID | list-epics [--state S] [--initiative ID] [--parent ID] [--level L]
+  list-initiatives [--state S]                claim --id ID [--owner O] [--ttl MIN] | release --id ID | list-claimable [--state S]
   push-plan --epic ID < plan.md               get-plan --epic ID
+  list-initiatives [--state S]                claim --id ID [--owner O] [--ttl MIN] | release --id ID | list-claimable [--state S]
   push-status --id ID --state S [--note N] [--pr N] [--assignee A|-]    pull-status
-  pull-feedback [--pr-state open]             push-digest --date YYYY-MM-DD < digest.html
+  pull-checks [--pr N]                        pull-feedback [--pr-state open]             push-digest --date YYYY-MM-DD < digest.html
   push-suggestion --text T [--file F] < []   pull-suggestions | triage-suggestion --id N --decision accepted|rejected [--note N]
   import --from conception/
+  push-journal --kind K --key K2 [--extra JSON]   pull-journal [--since YYYY-MM-DD]
 EOF
   exit 1
 }
@@ -67,6 +70,82 @@ collect_json() { # collect_json <dir>
 }
 
 # ---------- forge feedback (backend-independent, ADR-0007) ----------
+# pull_checks [--pr N] — CI state per PR, WITH the failing job logs.
+# The harness could previously tell that a PR was red but never why: nothing
+# anywhere called `gh run`, read a job log, or waited for a check. This is the
+# observation half of the CI lane; fix-ci.js is the reaction half.
+# Log excerpts are TRUNCATED and never parsed for meaning here — the triage
+# agent does that. Best-effort throughout: a missing CLI degrades to [].
+pull_checks() {
+  local only_pr="" F
+  while [ $# -gt 0 ]; do case "$1" in --pr) only_pr="$2"; shift 2;; *) shift;; esac; done
+  F=$(forge)
+  case "$F" in
+    github)
+      command -v gh >/dev/null 2>&1 || { echo '[]'; echo "gh CLI not found — no checks pulled" >&2; return 0; }
+      local prs
+      prs=$(gh pr list --state open --limit 200 --json number,headRefName,statusCheckRollup 2>/dev/null || echo '[]')
+      [ -n "$only_pr" ] && prs=$(printf '%s' "$prs" | jq --argjson n "$only_pr" '[.[] | select(.number == $n)]')
+      printf '%s' "$prs" | jq -c '.[]' 2>/dev/null | while IFS= read -r pr; do
+        local num br state failed logs
+        num=$(printf '%s' "$pr" | jq -r '.number')
+        br=$(printf '%s' "$pr" | jq -r '.headRefName // ""')
+        state=$(printf '%s' "$pr" | jq -r '[.statusCheckRollup[]? | ((.conclusion // .state // "") | ascii_upcase)]
+          | if length == 0 then "none"
+            elif any(. == "FAILURE" or . == "ERROR" or . == "TIMED_OUT" or . == "CANCELLED"
+                     or . == "ACTION_REQUIRED" or . == "STARTUP_FAILURE") then "red"
+            elif any(. == "PENDING" or . == "QUEUED" or . == "IN_PROGRESS" or . == "WAITING"
+                     or . == "REQUESTED" or . == "") then "pending"
+            else "green" end')
+        logs='[]'
+        if [ "$state" = "red" ]; then
+          # the failing check runs, and for each the tail of its failed-step log
+          failed=$(printf '%s' "$pr" | jq -c '[.statusCheckRollup[]?
+            | select(((.conclusion // .state // "") | ascii_upcase)
+                     | . == "FAILURE" or . == "ERROR" or . == "TIMED_OUT" or . == "STARTUP_FAILURE")
+            | {name: (.name // .context // "check"), url: (.detailsUrl // .targetUrl // "")}]')
+          logs=$(printf '%s' "$failed" | jq -c '.[]' 2>/dev/null | while IFS= read -r job; do
+            local jname jurl runid excerpt
+            jname=$(printf '%s' "$job" | jq -r '.name')
+            jurl=$(printf '%s' "$job" | jq -r '.url')
+            # .../runs/<id>/job/<id> — the run id is what `gh run view` wants
+            runid=$(printf '%s' "$jurl" | sed -n 's|.*/runs/\([0-9][0-9]*\).*|\1|p')
+            excerpt=""
+            if [ -n "$runid" ]; then
+              excerpt=$(gh run view "$runid" --log-failed 2>/dev/null | tail -c "${ORCH_CI_LOG_BYTES:-4000}")
+            fi
+            jq -cn --arg n "$jname" --arg r "${runid:-}" --arg e "$excerpt" \
+              '{job:$n, run:(if $r=="" then null else $r end), logExcerpt:$e}'
+          done | jq -sc '.')
+          [ -n "$logs" ] || logs='[]'
+        fi
+        jq -cn --argjson pr "$num" --arg br "$br" --arg st "$state" --argjson logs "$logs" \
+          '{pr:$pr, epicId:($br | if startswith("orch/") then .[5:] else null end),
+            status:$st, failedJobs:$logs}'
+      done | jq -sc '.' ;;
+    gitlab)
+      command -v glab >/dev/null 2>&1 || { echo '[]'; echo "glab CLI not found — no checks pulled" >&2; return 0; }
+      # GitLab's CI signal was hardcoded to null in pull-feedback; this is the real one.
+      glab mr list --output json --per-page 100 2>/dev/null | jq -c '.[] | {iid, source_branch, sha}' 2>/dev/null \
+        | while IFS= read -r mr; do
+        local iid br st
+        iid=$(printf '%s' "$mr" | jq -r '.iid')
+        br=$(printf '%s' "$mr" | jq -r '.source_branch // ""')
+        [ -n "$only_pr" ] && [ "$iid" != "$only_pr" ] && continue
+        st=$(glab api "projects/:id/merge_requests/$iid/pipelines" 2>/dev/null \
+             | jq -r '[.[0].status // ""] | .[0]
+               | if . == "" then "none"
+                 elif . == "failed" or . == "canceled" then "red"
+                 elif . == "success" then "green"
+                 else "pending" end' 2>/dev/null || echo none)
+        jq -cn --argjson pr "$iid" --arg br "$br" --arg st "$st" \
+          '{pr:$pr, epicId:($br | if startswith("orch/") then .[5:] else null end),
+            status:$st, failedJobs:[]}'
+      done | jq -sc '.' ;;
+    *) echo '[]' ;;
+  esac
+}
+
 pull_feedback() {
   local prstate="open" F
   while [ $# -gt 0 ]; do case "$1" in --pr-state) prstate="$2"; shift 2;; *) shift;; esac; done
@@ -81,6 +160,17 @@ pull_feedback() {
         --json number,title,headRefName,reviews,comments,statusCheckRollup 2>/dev/null | jq '
         def trusted: (.authorAssociation // "") as $a
           | ($a == "OWNER" or $a == "MEMBER" or $a == "COLLABORATOR");
+        # ci_state: red | pending | green | none. THREE states, not two — an
+        # unfinished check is not a passing one, and "no checks configured" is
+        # not the same as "checks passed".
+        def ci_state:
+          if length == 0 then "none"
+          elif any(. == "FAILURE" or . == "ERROR" or . == "TIMED_OUT"
+                   or . == "CANCELLED" or . == "ACTION_REQUIRED"
+                   or . == "STARTUP_FAILURE") then "red"
+          elif any(. == "PENDING" or . == "QUEUED" or . == "IN_PROGRESS"
+                   or . == "WAITING" or . == "REQUESTED" or . == "") then "pending"
+          else "green" end;
         [ .[] | . as $pr |
           ([.comments[]? | select(trusted) | .body // ""]
             | map(capture("/orch (?<sig>approve-plan|approve|revise):?[[:space:]]*(?<notes>.*)"; "g"))
@@ -93,16 +183,20 @@ pull_feedback() {
                      elif ([$pr.reviews[]? | select(trusted) | select(.state=="CHANGES_REQUESTED")] | length) > 0 then "revise"
                      else null end),
             notes: (if $c and (($c.notes // "") | length > 0) then $c.notes else null end),
-            green: ([$pr.statusCheckRollup[]?
-                      | ((.conclusion // .state // "") | ascii_upcase)
-                      | select(. == "FAILURE" or . == "ERROR" or . == "TIMED_OUT"
-                               or . == "CANCELLED" or . == "ACTION_REQUIRED"
-                               or . == "STARTUP_FAILURE")] | length == 0)
-          } | select(.signal != null) ]' ;;
+            checks: ([$pr.statusCheckRollup[]?
+                       | ((.conclusion // .state // "") | ascii_upcase)] | ci_state),
+            # green is kept for compatibility, but a PENDING check is NOT green:
+            # it used to be, so a PR whose CI had not started read as merge-eligible.
+            green: (([$pr.statusCheckRollup[]?
+                       | ((.conclusion // .state // "") | ascii_upcase)] | ci_state) == "green")
+          }
+          # Report CI for EVERY PR. Filtering on `.signal != null` here meant a red
+          # build on a PR nobody had commented on was invisible to the harness.
+          | select(.signal != null or .checks == "red") ]' ;;
     gitlab)
       command -v glab >/dev/null 2>&1 || { echo '[]'; echo "glab CLI not found — no feedback pulled" >&2; return 0; }
       # Trusted authors = project members (one API call), then scan MR notes.
-      local members out="[" first=1 iid mr sig notes srcbr
+      local members out="[" first=1 iid mr sig notes srcbr ck
       members=$(glab api "projects/:id/members/all" 2>/dev/null | jq -c '[.[].username]' || echo '[]')
       glab mr list --output json --per-page 100 2>/dev/null \
         | jq -c '.[] | {iid, source_branch}' 2>/dev/null \
@@ -117,10 +211,19 @@ pull_feedback() {
         [ -n "$sig" ] || continue
         s=${sig%%$'\t'*}; n=${sig#*$'\t'}
         eid=""; case "$srcbr" in orch/*) eid=${srcbr#orch/};; esac
+        # Real pipeline status — this used to be hardcoded null, so GitLab had NO
+        # CI signal at all. Only signalled MRs reach here, so it is one call each.
+        ck=$(glab api "projects/:id/merge_requests/$iid/pipelines" 2>/dev/null \
+             | jq -r '[.[0].status // ""] | .[0]
+               | if . == "" then "none"
+                 elif . == "failed" or . == "canceled" then "red"
+                 elif . == "success" then "green"
+                 else "pending" end' 2>/dev/null || echo none)
         [ $first -eq 1 ] || out="$out,"; first=0
-        out="$out$(jq -nc --argjson pr "$iid" --arg s "$s" --arg n "$n" --arg e "$eid" \
+        out="$out$(jq -nc --argjson pr "$iid" --arg s "$s" --arg n "$n" --arg e "$eid" --arg ck "$ck" \
           '{pr:$pr, signal:$s, epicId:(if $e=="" then null else $e end),
-            notes:(if $n=="" then null else $n end), green:null}')"
+            notes:(if $n=="" then null else $n end),
+            checks:$ck, green:($ck=="green")}')"
       done
       echo "$out]" ;;
     *) echo '[]' ;;
@@ -130,7 +233,20 @@ pull_feedback() {
 # ---------- remote backends: delegate to the node adapter ----------
 # every op including health delegates — health must report the REAL backend
 # reachability, not the local skeleton (field-test finding 2026-07-16)
-if [ "$B" != "none" ] && [ "$OP" != "pull-feedback" ]; then
+#
+# LOCAL-ONLY ops never delegate. They are not board data and no adapter
+# implements them, so delegating them meant `unknown op` + exit 1 on every
+# remote backend — the whole suggestion lifecycle and `import` silently worked
+# on `none` alone, while /core:triage-suggestions claimed otherwise.
+#   pull-feedback  — always the forge (gh/glab), independent of the board
+#   push/pull-journal — the harness's own telemetry, deliberately never leaves
+#   import         — local conception/*.md → .orch/specs/
+#   *-suggestion(s) — docs/SUGGESTIONS.md, a file in this repo
+case "$OP" in
+  pull-feedback|pull-checks|push-journal|pull-journal|import|push-suggestion|pull-suggestions|triage-suggestion) LOCAL_ONLY=1 ;;
+  *) LOCAL_ONLY=0 ;;
+esac
+if [ "$B" != "none" ] && [ "$LOCAL_ONLY" = "0" ]; then
   A="$R/orchestrator/adapters/pm-$B.js"
   [ -f "$A" ] || { echo "unknown backend '$B' (no $A)" >&2; exit 1; }
   command -v node >/dev/null 2>&1 || { echo "backend '$B' needs node (ADR-0007: only 'none' is zero-dep)" >&2; exit 1; }
@@ -138,7 +254,7 @@ if [ "$B" != "none" ] && [ "$OP" != "pull-feedback" ]; then
 fi
 
 # ---------- none backend: sharded local files, pure shell/jq ----------
-mkdir -p "$ORCH/sessions" "$ORCH/specs" "$ORCH/epics" "$ORCH/plans" "$ORCH/digest" "$ORCH/cache"
+mkdir -p "$ORCH/sessions" "$ORCH/specs" "$ORCH/epics" "$ORCH/plans" "$ORCH/digest" "$ORCH/cache" "$ORCH/journal"
 
 arg() { # arg <flag> "$@" — prints the value following <flag>
   local f="$1"; shift
@@ -212,9 +328,82 @@ case "$OP" in
     ID=$(arg --id "$@") || { echo "--id required" >&2; exit 1; }
     cat "$ORCH/epics/$(slug "$ID").json" ;;
   list-epics)
+    # Optional hierarchy filters (ADR-0027). With NO flags the output is byte-for-byte
+    # what it always was, so run-to-done.sh, nightly-orchestrator.js and
+    # run-with-limits.sh keep working untouched.
     S=$(arg --state "$@" || true)
-    if [ -n "${S:-}" ]; then collect_json "$ORCH/epics" | jq --arg s "$S" '[.[] | select(.state == $s)]'
-    else collect_json "$ORCH/epics"; fi ;;
+    INIT=$(arg --initiative "$@" || true)
+    PARENT=$(arg --parent "$@" || true)
+    LEVEL=$(arg --level "$@" || true)
+    collect_json "$ORCH/epics" | jq \
+      --arg s "${S:-}" --arg i "${INIT:-}" --arg p "${PARENT:-}" --arg l "${LEVEL:-}" '
+      [ .[]
+        | select($s == "" or .state == $s)
+        | select($i == "" or (.initiative // "") == $i)
+        | select($p == "" or (.parentId // .parent // "") == $p)
+        | select($l == "" or (.level // "epic") == $l) ]' ;;
+
+  list-initiatives)
+    # The board is the golden source; on `none` the hierarchy is derived from the
+    # epics themselves so both lanes return the same shape (ADR-0027).
+    S=$(arg --state "$@" || true)
+    collect_json "$ORCH/epics" | jq --arg s "${S:-}" '
+      [ .[] | select((.level // "epic") == "initiative") ] as $explicit
+      | (if ($explicit | length) > 0 then $explicit
+         else
+           # No explicit initiative records: synthesize one per distinct
+           # .initiative value so a flat board still answers the question.
+           [ .[] | select((.level // "epic") != "initiative") ]
+           | group_by(.initiative // "unassigned")
+           | map({ id: (.[0].initiative // "unassigned"),
+                   title: (.[0].initiative // "Unassigned work"),
+                   level: "initiative",
+                   synthesized: true,
+                   epics: [.[].id],
+                   state: (if all(.[]; .state == "Merged") then "Merged"
+                           elif any(.[]; .state == "In-progress") then "In-progress"
+                           else "Backlog" end) })
+         end)
+      | [ .[] | select($s == "" or .state == $s) ]' ;;
+
+  claim)
+    # Lease an epic so a parallel agent does not pick it up (the board is the
+    # golden source; the lease lives on the record and is mirrored back).
+    # A lease EXPIRES so a crashed agent's card returns to the pool rather than
+    # being stranded — the same shape run-with-limits.sh already uses for pauses.
+    ID=$(arg --id "$@") || { echo "--id required" >&2; exit 1; }
+    OWNER=$(arg --owner "$@" || true); [ -n "${OWNER:-}" ] || OWNER="${ORCH_AGENT_ID:-$(cur_branch)}"
+    TTL=$(arg --ttl "$@" || true); [ -n "${TTL:-}" ] || TTL="${ORCH_LEASE_TTL_MIN:-90}"
+    EF="$ORCH/epics/$(slug "$ID").json"
+    [ -f "$EF" ] || { echo "no such epic: $ID" >&2; exit 1; }
+    NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    UNTIL=$(date -u -v+"${TTL}"M +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
+         || date -u -d "+${TTL} minutes" +%Y-%m-%dT%H:%M:%SZ)
+    # Refuse only if someone ELSE holds an UNEXPIRED lease. Re-claiming your own
+    # is how a resumed run keeps working.
+    HELD=$(jq -r --arg now "$NOW" --arg me "$OWNER" '
+      if (.leaseUntil // "") > $now and (.assignee // "") != "" and (.assignee // "") != $me
+      then .assignee else "" end' "$EF")
+    if [ -n "$HELD" ]; then
+      jq -n --arg id "$ID" --arg by "$HELD" '{claimed:false, id:$id, heldBy:$by}'; exit 3
+    fi
+    jq_rewrite "$EF" --arg a "$OWNER" --arg u "$UNTIL" --arg t "$NOW" \
+      '.assignee = $a | .leaseUntil = $u | .ts = $t'
+    jq -n --arg id "$ID" --arg by "$OWNER" --arg u "$UNTIL" '{claimed:true, id:$id, by:$by, until:$u}' ;;
+  release)
+    ID=$(arg --id "$@") || { echo "--id required" >&2; exit 1; }
+    EF="$ORCH/epics/$(slug "$ID").json"
+    [ -f "$EF" ] || { echo "no such epic: $ID" >&2; exit 1; }
+    jq_rewrite "$EF" 'del(.leaseUntil) | del(.assignee)'
+    jq -n --arg id "$ID" '{released:true, id:$id}' ;;
+  list-claimable)
+    # Epics nobody currently holds: unleased, or leased past expiry. This is what
+    # a parallel worker should pick from.
+    S=$(arg --state "$@" || true)
+    NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    collect_json "$ORCH/epics" | jq --arg s "${S:-}" --arg now "$NOW" '
+      [ .[] | select($s == "" or .state == $s)
+            | select((.leaseUntil // "") == "" or (.leaseUntil // "") <= $now) ]' ;;
 
   push-plan)
     ID=$(arg --epic "$@") || { echo "--epic required" >&2; exit 1; }
@@ -243,6 +432,7 @@ case "$OP" in
       | jq '[.[] | {id, state: (.state // "Backlog"), note: (.note // null), pr: (.pr // null), ts: (.ts // null)}]' ;;
 
   pull-feedback) pull_feedback "$@" ;;
+  pull-checks)   pull_checks "$@" ;;
 
   push-digest)
     D=$(arg --date "$@") || { echo "--date required" >&2; exit 1; }
@@ -305,5 +495,29 @@ case "$OP" in
     [ -n "${NOTE:-}" ] && MARK="$MARK ($NOTE)"
     awk -v n="$ID" -v mark="$MARK" '/^- \[ \] /{c++; if(c==n){sub(/^- \[ \] /,"- [x] "); print $0 "  " mark; next}} {print}' "$SUGG" > "$SUGG.tmp" && mv "$SUGG.tmp" "$SUGG"
     jq -n --arg id "$ID" --arg d "$DEC" --arg e "$EID" '{id:$id, decision:$d, epic:(if $e=="" then null else $e end)}' ;;
+  push-journal)
+    # Append one event from the CLI/workflow side (the hooks write directly).
+    # Same file, same shape — one journal, many producers.
+    KIND=$(arg --kind "$@") || { echo "--kind required" >&2; exit 1; }
+    KEY=$(arg --key "$@") || { echo "--key required" >&2; exit 1; }
+    EXTRA=$(arg --extra "$@" || true); [ -n "${EXTRA:-}" ] || EXTRA='{}'
+    printf '%s' "$EXTRA" | jq -e . >/dev/null 2>&1 || { echo "--extra must be a JSON object" >&2; exit 1; }
+    mkdir -p "$ORCH/journal"
+    SID="${CLAUDE_SESSION_ID:-}"; [ -n "$SID" ] || SID=$(cur_branch)
+    jq -cn --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg sid "$SID" \
+           --arg kind "$KIND" --arg key "$KEY" --argjson extra "$EXTRA" \
+      '{ts:$ts, sid:$sid, kind:$kind, key:$key} + $extra' >> "$ORCH/journal/$(date -u +%F).jsonl"
+    jq -n --arg k "$KIND" '{ok:true, kind:$k}' ;;
+  pull-journal)
+    # The whole stream, oldest first. --since YYYY-MM-DD to bound it.
+    SINCE=$(arg --since "$@" || true)
+    [ -d "$ORCH/journal" ] || { echo '[]'; exit 0; }
+    for f in "$ORCH"/journal/*.jsonl; do
+      [ -f "$f" ] || continue
+      d=$(basename "$f" .jsonl)
+      [ -n "${SINCE:-}" ] && [ "$d" \< "$SINCE" ] && continue
+      cat "$f"
+    done | jq -s '.' ;;
+
   *) usage ;;
 esac

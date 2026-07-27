@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# journal-export — turn .orch/journal/*.jsonl into a bundle that is safe to hand
+# to someone else (ADR-0025).
+#
+# The journal is already classification-only, but "safe in my repo" and "safe to
+# send you" are different bars. This pass is the stricter one, and it works by
+# ALLOWLIST: only known-safe fields survive, so a field added to the journal
+# later cannot leak by default. Deny-listing would have to be updated forever.
+#
+# Nothing here talks to the network. It writes a file; moving it is your call.
+#
+# usage: journal-export [--since YYYY-MM-DD] [--out FILE]
+set -u
+R="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+J="$R/.orch/journal"
+SINCE=""; OUT=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --since) SINCE="$2"; shift 2 ;;
+    --out)   OUT="$2";   shift 2 ;;
+    *) echo "usage: journal-export [--since YYYY-MM-DD] [--out FILE]" >&2; exit 1 ;;
+  esac
+done
+command -v jq >/dev/null 2>&1 || { echo "journal-export needs jq" >&2; exit 1; }
+[ -d "$J" ] || { echo "no journal at $J — nothing to export" >&2; exit 1; }
+
+# The repo is identified by a SALTED hash, never by name. Same repo → same id
+# across exports (so batches join), but the id does not reverse to a path. The
+# salt is per-repo and stays local.
+SALTF="$R/.orch/.export-salt"
+if [ ! -f "$SALTF" ]; then
+  (head -c 32 /dev/urandom 2>/dev/null | od -An -tx1 | tr -d ' \n' || date +%s%N) > "$SALTF"
+fi
+SALT=$(cat "$SALTF")
+hash_of() { printf '%s' "$1$SALT" | (shasum -a 256 2>/dev/null || sha256sum) | cut -c1-16; }
+REPO_ID=$(hash_of "$(git -C "$R" rev-parse --show-toplevel 2>/dev/null || echo "$R")")
+
+TODAY=$(date -u +%F)
+[ -n "$OUT" ] || OUT="$R/.orch/exports/${REPO_ID}-${TODAY}.json"
+mkdir -p "$(dirname "$OUT")"
+
+# --- collect, filtering by date on the FILENAME (cheap, no parse) ---
+COLLECT=$(mktemp)
+for f in "$J"/*.jsonl; do
+  [ -f "$f" ] || continue
+  d=$(basename "$f" .jsonl)
+  [ -n "$SINCE" ] && [ "$d" \< "$SINCE" ] && continue
+  cat "$f" >> "$COLLECT"
+done
+[ -s "$COLLECT" ] || { rm -f "$COLLECT"; echo "no events in range — nothing to export" >&2; exit 1; }
+
+# --- redact + aggregate --------------------------------------------------------
+# What survives, and why:
+#   kind, key, class  — the categories. The entire point of the export.
+#   corrected         — did the harness fix its own mistake? The key metric.
+#   ext, length       — coarse buckets, no content.
+#   path              — REDUCED TO ITS EXTENSION AND DEPTH. A repo-relative path
+#                       is still the customer's architecture; "3 levels deep, .ts"
+#                       is enough to spot a pattern and tells you nothing else.
+# What never survives: ts (only a date bucket), sid, epic ids, PR numbers, job
+# names, log excerpts, commands, prompts, file names, branch names.
+jq -sc --arg repo "$REPO_ID" --arg today "$TODAY" --arg since "${SINCE:-}" '
+  def safe_path:
+    if . == null or . == "" then null
+    else { depth: (split("/") | length),
+           ext: (if test("\\.[A-Za-z0-9]+$") then (split(".") | last) else "none" end) }
+    end;
+  # `//` is the WRONG operator for a boolean: `false // null` is null in jq, so
+  # `corrected: false` — a failed correction, the most interesting event there
+  # is — silently vanished and the success rate read 100%.
+  def opt(f): if has(f) then .[f] else null end;
+  map({
+    date:      (.ts // "" | split("T")[0]),
+    kind:      .kind,
+    key:       .key,
+    class:     opt("class"),
+    corrected: opt("corrected"),
+    ext:       opt("ext"),
+    length:    opt("length"),
+    severity:  opt("severity"),
+    file:      (opt("path") | safe_path),
+  }) as $ev
+  | {
+      schema: "harness-journal-export/1",
+      repo: $repo, generated: $today, since: (if $since == "" then null else $since end),
+      events: ($ev | length),
+      days: ($ev | map(.date) | unique | length),
+
+      # what the harness got wrong, by frequency — the ranking that drives the
+      # next round of framework changes
+      byKind: ($ev | group_by(.kind) | map({(.[0].kind): length}) | add // {}),
+      byKey:  ($ev | group_by(.kind + "/" + (.key // ""))
+                   | map({key: (.[0].kind + "/" + (.[0].key // "")), n: length})
+                   | sort_by(-.n)),
+      byClass: ($ev | map(select(.class != null)) | group_by(.class)
+                    | map({(.[0].class): length}) | add // {}),
+
+      # the metric that matters: when the harness made a mistake, did it fix it
+      # itself, or did a human have to?
+      correction: {
+        attempted: ($ev | map(select(.corrected != null)) | length),
+        succeeded: ($ev | map(select(.corrected == true)) | length),
+        humanInterventions: ($ev | map(select(.kind == "user_correction")) | length),
+      },
+      fileTypes: ($ev | map(select(.file != null) | .file.ext) | group_by(.)
+                      | map({(.[0]): length}) | add // {}),
+    }' "$COLLECT" > "$OUT.tmp" || { rm -f "$COLLECT" "$OUT.tmp"; echo "export failed" >&2; exit 1; }
+
+# --- verify the redaction actually held, BEFORE the file is written -----------
+# A redaction pass that is never checked is a redaction pass that silently
+# regresses. If any of these fire, no bundle is produced.
+fail() { rm -f "$OUT.tmp" "$COLLECT"; echo "EXPORT ABORTED: $1" >&2; exit 1; }
+grep -q "$HOME" "$OUT.tmp" 2>/dev/null && fail "a \$HOME fragment survived redaction"
+grep -qE '"/|: *"/' "$OUT.tmp" 2>/dev/null && fail "an absolute path survived redaction"
+grep -q '@' "$OUT.tmp" 2>/dev/null && fail "an '@' (email/handle) survived redaction"
+grep -qE 'https?://' "$OUT.tmp" 2>/dev/null && fail "a URL survived redaction"
+jq -e . "$OUT.tmp" >/dev/null 2>&1 || fail "the bundle is not valid JSON"
+
+mv "$OUT.tmp" "$OUT"; rm -f "$COLLECT"
+echo "$OUT"

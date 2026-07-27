@@ -54,6 +54,8 @@ fi
 # runtime templates fetch it and set ORCH_PLUGIN_DIR to the plugin dir; we pass
 # it via --plugin-dir so `claude -p` can resolve the workflow. (Interactive/local
 # runs where the plugin is already installed can leave ORCH_PLUGIN_DIR unset.)
+# bash 3.2: expand with the ${arr[@]+…} alternate form — a bare "${arr[@]}" on an
+# empty array is an UNBOUND VARIABLE error under `set -u` before bash 4.4.
 PLUGIN_ARGS=()
 [ -n "${ORCH_PLUGIN_DIR:-}" ] && PLUGIN_ARGS=(--plugin-dir "$ORCH_PLUGIN_DIR")
 MODELS_JSON=$(jq -c . "$R/orchestrator/models.config.json" 2>/dev/null || echo null)
@@ -61,7 +63,7 @@ MODELS_JSON=$(jq -c . "$R/orchestrator/models.config.json" 2>/dev/null || echo n
 # NEVER --bare here (ADR-0019: it breaks the subscription-token lane).
 OUT=$(claude -p "Run the nightly-orchestrator workflow with args {\"date\":\"$DATE\",\"maxEpics\":${ORCH_MAX_EPICS:-4},\"budgetTokens\":${ORCH_BUDGET_TOKENS:-null},\"models\":$MODELS_JSON}." \
   --settings "$R/orchestrator/settings.orchestrator.json" \
-  "${PLUGIN_ARGS[@]}" \
+  ${PLUGIN_ARGS[@]+"${PLUGIN_ARGS[@]}"} \
   --max-turns "${ORCH_MAX_TURNS:-200}" ${ORCH_MAX_BUDGET_USD:+--max-budget-usd "$ORCH_MAX_BUDGET_USD"} \
   --strict-mcp-config --mcp-config "$R/.mcp.json" \
   --output-format json 2>&1)

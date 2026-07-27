@@ -25,6 +25,11 @@ a live human):
       accepted from owners/members/collaborators only and carry the `epicId`
       resolved from the `orch/<id>` PR branch). Split PRs into OK'd vs
       commented-for-rework.
+2c. **Read the CI, don't just check a boolean**: `orch state pull-checks` gives, per PR,
+   `red | pending | green | none` plus the failing job's log excerpt. **`pending` is not
+   green** — a PR whose checks have not finished is not merge-eligible. For anything red,
+   run the `fix-ci` workflow before the merge pass: it triages from the logs and repairs
+   the mechanical failures, escalating flake/infra/dependency rather than retrying them.
 3. **Risk gate, then merge the OK'd + green PRs to `main`** — one at a time, you present:
    a. **Risk check (mandatory, before any merge)**: classify each OK'd PR against
       `orchestrator/risk-policy.json` (lines changed vs thresholds; touched paths vs

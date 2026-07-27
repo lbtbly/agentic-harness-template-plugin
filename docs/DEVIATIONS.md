@@ -103,6 +103,16 @@ required after install for hooks/agents/MCP (not for SKILL.md edits) — the man
 
 ## 7. Lecture audit (learn-harness-engineering 04–13, 2026-07-17)
 
+**Update (2026-07-27):** the claim below that the plugin had "all six [loop-engineering]
+primitives, richer guards" was aspirational, not true. `partition_wave` and the usage throttle
+were defined and unit-tested but never called by `run_loop`; the thrash guard was unreachable;
+the budget guard was inert. They are wired as of 1.5.0 (see CHANGELOG). Two primitives the audit
+also marked as covered were genuinely missing and have now been added: **external state that
+re-verifies** (standing goals, ADR-0028 — a `passes:true` was terminal and nothing ever looked
+again) and **observability inside the harness** (the journal, ADR-0023 — every guard block was
+`stderr` and nothing else). The verdict on L11 below is therefore revised: the plugin was *below*
+that lecture, not equal to it.
+
 The plugin was audited against walkinglabs.github.io/learn-harness-engineering
 lectures 04–13. Verdicts: **equal or better** on 05 (continuity — orch state
 snapshots + PreCompact auto-save beat manual protocols), 07 (overreach —
@@ -116,8 +126,27 @@ harness-side per-phase metrics + VCR + OTel env documentation (L11 + L07),
 clean-exit checklist in handoff (L12), rule since/expires metadata + doc-health
 instruction audit (L04). **Explicitly not adopted**: global WIP=1 (worktree
 parallelism + serial merge is strictly better), evaluator letter-grade rubrics
-(majority + blocking dissent is stricter — ADR-0016), harness-emitted OTel
-spans (breaks the zero-dependency posture; docs-only pointer instead).
+(majority + blocking dissent is stricter — ADR-0016; **re-examined 2026-07-27 and the
+decision stands**: a letter grade that averages away a blocking defect is weaker than the
+current aggregation, and `lib/dod-verdict.js` is unchanged), harness-emitted OTel
+spans (breaks the zero-dependency posture; the append-only JSONL journal of ADR-0023 covers
+the need without a collector, and the docs-only OTel pointer remains for anyone who wants
+the full thing).
+
+## 9. ADR-0007's MCP claim was never true of the code (2026-07-27)
+
+**ADR-0007 says:** "MCP is used only inside remote adapters, interactive only; headless uses
+REST-via-token."
+
+**Reality:** no adapter contains a single line of MCP. `pm-jira.js` and `pm-notion.js` are
+direct `fetch()` to the REST APIs; `pm-github-projects.js` and `pm-gitlab.js` shell out to
+`gh`/`glab`. The only real MCP lane is human-in-the-loop provisioning inside
+`/core:board-setup` (`SKILL.md:28-31`), which is genuine and works.
+
+**Deviation:** the ADR describes an intent that was never implemented. The sentence should read
+"MCP is used for interactive board provisioning; adapters use REST/CLI with a token." Recorded
+here rather than editing an accepted ADR (which ADR-0001 forbids) — a superseding ADR is
+warranted if an adapter ever does gain an MCP path.
 
 ## 8. `paths:`-scoped rules: verified convention, community-reported bugs (2026-07-17)
 

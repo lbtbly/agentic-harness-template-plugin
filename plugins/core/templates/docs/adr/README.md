@@ -13,7 +13,7 @@ The WHY behind structural choices. Convention:
 
 > This project starts with only **0001** (which establishes the practice). Your own
 > ADRs start at **0002**. The harness's own design decisions live in the
-> `lambertstudi/agentic-harness-template-plugin` repo, not here.
+> `lbtbly/agentic-harness-template-plugin` repo, not here.
 
 ## Index
 - [0001 — Record architecture decisions](0001-record-architecture-decisions.md)

@@ -99,7 +99,7 @@ All evidence re-verified against `c372ad2` (post-remediation-round HEAD, 2026-07
 
 ### R4 — Nightly CI clones a private repo unauthenticated
 - **Problem**: `plugins/orchestrator/templates/orchestrator/runtime/github-actions.yml:58`
-  does `git clone --depth 1 https://github.com/lambertstudi/agentic-harness-template-plugin`.
+  does `git clone --depth 1 https://github.com/lbtbly/agentic-harness-template-plugin`.
   `docs/TEST-PROTOCOL.md` states this repo is **private** → the clone fails on a GitHub
   runner without credentials, so the scheduled nightly breaks at step one. The URL is
   also hardcoded (the GitLab template correctly parameterizes via
@@ -108,8 +108,8 @@ All evidence re-verified against `c372ad2` (post-remediation-round HEAD, 2026-07
   mirroring the GitLab lane) and authenticate — `actions/checkout` with `repository:` +
   `token:` (fine-grained PAT, contents:read), or fetch a released zip via
   `claude --plugin-url`. Document the required secret in the workflow header.
-- **Acceptance**: no hardcoded `github.com/lambertstudi/...` URL in any template
-  (`grep -rn "lambertstudi" plugins/` → nothing); enable-orchestrator SKILL.md asks for /
+- **Acceptance**: no hardcoded `github.com/lbtbly/...` URL in any template
+  (`grep -rn "lbtbly" plugins/` → nothing); enable-orchestrator SKILL.md asks for /
   writes the repo location; `tests/test-run-to-done.sh` (or a new assertion) covers the
   variable's presence in the workflow.
 - **Effort**: M. **Source**: code.claude.com/docs/en/github-actions (`--plugin-url`,

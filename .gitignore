@@ -1,4 +1,8 @@
 .DS_Store
 node_modules/
 .orch/cache/
-.DS_Store
+# This repo is the MARKETPLACE, not an installed harness — it has no real state
+# layer. Running the test suite exercises the guard hooks, and journal() falls
+# back to the git toplevel when CLAUDE_PROJECT_DIR is unset (correct for a hook
+# run by hand inside a repo), so .orch/ here is always test residue.
+.orch/

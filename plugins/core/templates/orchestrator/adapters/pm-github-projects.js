@@ -38,6 +38,53 @@ function out(obj) {
 function slug(s) {
   return String(s).replace(/[^a-zA-Z0-9._-]/g, '-');
 }
+function warn(msg) { process.stderr.write(`pm-github-projects: ${msg}\n`); }
+
+// A malformed ```json fence used to throw and kill the ENTIRE listing — one bad
+// issue made the whole board unreadable. The `none` backend already guards this.
+// Falls back to the "[id] Title" convention so an issue a HUMAN wrote on the
+// board is still picked up (GitHub/GitLab silently dropped those; Jira/Notion
+// happened to handle it). The board is the golden source — it must be readable
+// even when the harness did not write the record.
+function extractPayload(body, title) {
+  const m = (body || '').match(/```json\n([\s\S]*?)\n```/);
+  if (m) {
+    try { return JSON.parse(m[1]); }
+    catch (e) { warn(`skipping an item with an unparseable payload: ${String(e.message).split('\n')[0]}`); }
+  }
+  const t = (title || '').match(/^\[([^\]]+)\]\s*(.*)$/);
+  return t ? { id: t[1], title: t[2], state: 'Backlog' } : null;
+}
+
+// rollupInitiatives — the hierarchy, however the board expresses it. Explicit
+// level:"initiative" records win; otherwise one is synthesized per distinct
+// .initiative value, so a flat board answers the same question as a nested one.
+function rollupInitiatives(all, state) {
+  const explicit = all.filter((e) => (e.level ?? 'epic') === 'initiative');
+  let inits;
+  if (explicit.length) {
+    inits = explicit.map((i) => ({
+      ...i,
+      epics: all.filter((e) => (e.parentId ?? e.parent ?? e.initiative) === i.id).map((e) => e.id),
+    }));
+  } else {
+    const by = new Map();
+    for (const e of all.filter((e) => (e.level ?? 'epic') !== 'initiative')) {
+      const k = e.initiative || 'unassigned';
+      if (!by.has(k)) by.set(k, []);
+      by.get(k).push(e);
+    }
+    inits = [...by].map(([k, kids]) => ({
+      id: k, title: k === 'unassigned' ? 'Unassigned work' : k,
+      level: 'initiative', synthesized: true,
+      epics: kids.map((e) => e.id),
+      state: kids.every((e) => e.state === 'Merged') ? 'Merged'
+           : kids.some((e) => e.state === 'In-progress') ? 'In-progress' : 'Backlog',
+    }));
+  }
+  return state ? inits.filter((i) => i.state === state) : inits;
+}
+
 function findEpicIssue(id) {
   const list = JSON.parse(
     gh(['issue', 'list', '--limit', '500', '--label', 'orch:epic', '--state', 'all', '--json', 'number,title'])
@@ -108,17 +155,28 @@ try {
     }
     case 'list-epics': {
       const state = arg('--state');
+      const initiative = arg('--initiative');
+      const parent = arg('--parent');
+      const level = arg('--level');
       const list = JSON.parse(
         gh(['issue', 'list', '--limit', '500', '--label', 'orch:epic', '--state', 'all', '--json', 'number,title,body'])
       );
       const epics = list
-        .map((i) => {
-          const m = (i.body || '').match(/```json\n([\s\S]*?)\n```/);
-          return m ? JSON.parse(m[1]) : null;
-        })
+        .map((i) => extractPayload(i.body, i.title))
         .filter(Boolean)
-        .filter((e) => !state || e.state === state);
+        .filter((e) => !state || e.state === state)
+        .filter((e) => !initiative || e.initiative === initiative)
+        .filter((e) => !parent || (e.parentId ?? e.parent) === parent)
+        .filter((e) => !level || (e.level ?? 'epic') === level);
       out(epics);
+      break;
+    }
+    case 'list-initiatives': {
+      const state = arg('--state');
+      const all = JSON.parse(
+        gh(['issue', 'list', '--limit', '500', '--label', 'orch:epic', '--state', 'all', '--json', 'number,title,body'])
+      ).map((i) => extractPayload(i.body, i.title)).filter(Boolean);
+      out(rollupInitiatives(all, state));
       break;
     }
     case 'push-status': {
@@ -132,6 +190,16 @@ try {
       const e = m ? JSON.parse(m[1]) : { id };
       e.state = state;
       if (note) e.note = note;
+      // --pr / --assignee used to be parsed by Jira and Notion and DROPPED here,
+      // and pull-status omitted `pr` entirely. `assignee` is now load-bearing:
+      // it carries the claim that stops two agents taking the same card.
+      const pr = arg('--pr');
+      const assignee = arg('--assignee');
+      const lease = arg('--lease-until');
+      if (pr) e.pr = Number(pr);
+      if (assignee === '-') { delete e.assignee; delete e.leaseUntil; }
+      else if (assignee) e.assignee = assignee;
+      if (lease) e.leaseUntil = lease;
       e.ts = new Date().toISOString();
       gh(['label', 'create', `orch:state/${state}`, '--force']);
       gh([
@@ -145,17 +213,19 @@ try {
     }
     case 'pull-status': {
       const list = JSON.parse(
-        gh(['issue', 'list', '--limit', '500', '--label', 'orch:epic', '--state', 'all', '--json', 'body'])
+        gh(['issue', 'list', '--limit', '500', '--label', 'orch:epic', '--state', 'all', '--json', 'title,body'])
       );
       out(
         list
-          .map((i) => {
-            const m = (i.body || '').match(/```json\n([\s\S]*?)\n```/);
-            if (!m) return null;
-            const e = JSON.parse(m[1]);
-            return { id: e.id, state: e.state || 'Backlog', note: e.note || null, ts: e.ts || null };
-          })
+          .map((i) => extractPayload(i.body, i.title))
           .filter(Boolean)
+          // `pr` was omitted entirely here, so nothing downstream could route
+          // feedback; assignee/leaseUntil carry the claim (ADR-0027).
+          .map((e) => ({
+            id: e.id, state: e.state || 'Backlog', note: e.note || null,
+            pr: e.pr ?? null, assignee: e.assignee ?? null,
+            leaseUntil: e.leaseUntil ?? null, ts: e.ts || null,
+          }))
       );
       break;
     }
@@ -208,7 +278,8 @@ try {
       break;
     }
     case 'capabilities': {
-      out({ session: 'cache', spec: true, epics: true, status: true, digest: 'cache', feedback: 'forge' });
+      out({ session: 'cache', spec: true, epics: true, status: true, digest: 'cache', feedback: 'forge',
+            hierarchy: 'derived', claims: true });
       break;
     }
     default:
