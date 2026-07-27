@@ -22,7 +22,11 @@ plugin and it does **not** park/compose anything — optional capabilities are a
      **never overwrite a personalized file** (CLAUDE.md, docs/*, settings, configs are
      the user's). Skip the questionnaire items already answered (read them back from
      the scaffold) and re-confirm only what upgrade needs. Everything still lands on a
-     safety branch as one reviewable commit.
+     safety branch as one reviewable commit. If the project has a web UI (read back from
+     the scaffold, else ask the step-1 question) and `.claude/settings.json` lacks
+     `enabledPlugins["impeccable@impeccable"]`, **propose** the additive design-plugin
+     merge from step 2 (settings + gitignore block + CLAUDE.md workflow line) — it only
+     adds keys, never rewrites existing ones.
    - **Dry run = plan mode.** To preview without changing anything, run under plan mode.
    - Create a **safety branch** first (e.g. `chore/init-project`) so initialization is one
      reviewable, revertible commit.
@@ -65,6 +69,10 @@ plugin and it does **not** park/compose anything — optional capabilities are a
      user's choice there.
    - **main stack** — `Node/TS` · `Python` · `Go` · `Rust` (auto-"Other" gets no stack pack).
      "Node/TS" maps to the `typescript.md` pack.
+   - **UI surface?** — `web UI` · `none (API / CLI / library)`. Do **not** infer from the
+     stack (Node/TS can be backend-only; Python/Go can serve a UI). `web UI` gates the
+     third-party design plugins: the settings merge in step 2 and the install lines in
+     step 8 (ADR-0031).
    - **team vault** — `none (local .env)` · `1Password` · `Doppler` · `Infisical`.
    - **CI forge** — `github` · `gitlab` · `both` · `none` (pre-ticks `ci` in step 8
      and picks which forge files its setup scaffolds).
@@ -93,6 +101,25 @@ plugin and it does **not** park/compose anything — optional capabilities are a
    - Write `.claude/policy.json` — security/policy toggles only (per profile: poc relaxes
      `block_no_verify`/`protect_paths_policy` less strictly; team/autonomous keep them ON).
      No `module_*` keys — plugin install/uninstall is the gate.
+   - **web UI only** (skip entirely for `none`) — wire the third-party design plugins
+     (ADR-0031):
+     - Merge `$T/settings-design.json` into `.claude/settings.json`:
+       `jq -s '.[0] * .[1]' .claude/settings.json "$T/settings-design.json" > .claude/settings.json.tmp
+       && mv .claude/settings.json.tmp .claude/settings.json` — deep merge, adds
+       `extraKnownMarketplaces` + `enabledPlugins` (impeccable + styles-library, both
+       `autoUpdate: true`) without touching existing keys. Claude Code then prompts to
+       install them on repo trust and auto-updates them in the background.
+     - Append the impeccable gitignore block if absent:
+       `grep -q impeccable-ignore-start .gitignore 2>/dev/null || cat "$T/gitignore-impeccable" >> .gitignore`
+       (ephemeral `.impeccable/` state; shared artifacts — `config.json`, `design.json`,
+       `critique/*.md` — stay tracked).
+     - Add one line to CLAUDE.md's `## Workflow` section: "UI features: run
+       `/impeccable audit` before marking done, `/impeccable polish` before shipping;
+       visual direction comes from the styles-library brief captured in DESIGN.md —
+       don't invent a new one mid-project."
+     - Runtime pinning on → uncomment and set `node = "22"` in `.mise.toml`
+       (impeccable's hooks need Node ≥ 22 on PATH; they degrade to a one-time notice
+       without it. The devcontainer needs nothing — its node feature installs current LTS).
 
 3. **State backend & the `orchestrator/` state layer** (always scaffolded — the session
    hooks + `/core:handoff` depend on `orch`):
@@ -165,8 +192,28 @@ plugin and it does **not** park/compose anything — optional capabilities are a
    (scaffolds the chosen forge's workflow files); `orchestrator` →
    `/orchestrator:enable-orchestrator` (scaffolds the runtime + host scheduler).
 
+   **web UI only** — print this additional block after the harness one and record it in
+   the same CLAUDE.md "Installed plugins" section (note: auto-update is already on via
+   the settings `extraKnownMarketplaces` entries; impeccable's hooks need Node ≥ 22):
+   ```
+   # Third-party design plugins (already declared in .claude/settings.json;
+   # Claude Code prompts on trust — or install now):
+   /plugin marketplace add pbakaus/impeccable
+   /plugin install impeccable@impeccable
+   /plugin marketplace add lbtbly/styles-library   # PRIVATE — needs GitHub access to it
+   /plugin install styles-library@styles-library
+   /reload-plugins            # REQUIRED: skills are inert until reload
+   # Then, in order: style-picker auto-triggers on UI work with no fixed direction
+   # (or invoke it explicitly) — pick the visual direction first; then
+   /impeccable init           # one-time: writes PRODUCT.md + DESIGN.md — capture the
+                              # chosen style brief in DESIGN.md so hooks enforce it
+   ```
+
 9. **Verify & commit**: `jq .` valid on `.claude/settings.json`, `.claude/policy.json`,
-   `orchestrator/state.config.json`, `.orch/feature-list.schema.json`; `none` backend →
+   `orchestrator/state.config.json`, `.orch/feature-list.schema.json`; after the design
+   merge `.claude/settings.json` must still have `permissions.defaultMode == "plan"`, and
+   `enabledPlugins["impeccable@impeccable"]` + `enabledPlugins["styles-library@styles-library"]`
+   present **iff** the UI answer was `web UI`; `none` backend →
    `.orch/` skeleton with `.gitkeep`s; CLAUDE.md ≤150 lines with security at the top; no doc
    references a file you didn't scaffold. Propose the first commit
    `chore: initialize from core`, and in the summary repeat the plugin-install +

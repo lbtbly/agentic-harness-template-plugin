@@ -59,7 +59,10 @@ _(filled at /core:new-project — the confirmed set (with their
 `/plugin install …@harness` commands, ending in `/reload-plugins` —
 skills stay `Unknown command` until reload). e.g. core,
 formatting, orchestrator. Each plugin's skills are namespaced
-`/<plugin>:<skill>`.)_
+`/<plugin>:<skill>`. UI projects also record the third-party design
+pair `impeccable@impeccable` + `styles-library@styles-library`,
+auto-offered via `.claude/settings.json` — see ADR-0031 in the
+harness repo.)_
 
 ## Where things live
 | Need | Go to |
@@ -70,4 +73,5 @@ formatting, orchestrator. Each plugin's skills are namespaced
 | Stack, services, env var names | `docs/STACK.md` + `.env.example` |
 | Session state, next steps | `orch state pull-session` (`none`: `.orch/sessions/`) |
 | Product code (apps, shared libs) | `apps/<name>/` + `packages/<name>/` (npm workspaces) |
+| Design (UI projects) | direction: `style-picker` brief in `DESIGN.md`; quality: `/impeccable <command>`; shared spec in `.impeccable/` |
 | Turn on autonomous mode | install `orchestrator`, then `/orchestrator:enable-orchestrator` |

@@ -34,6 +34,28 @@ Opt-in extras: `formatting@harness` (format-on-edit), `workbench@harness`
 (security-auditor, refactorer, researcher, test-runner), `ci@harness`
 (PR-assistant CI templates).
 
+## Design quality (UI projects)
+
+Answer **web UI** to the scaffolder's UI-surface question and the project's
+`.claude/settings.json` gets two **external** design plugins declared
+(never vendored, not marketplace entries — ADR-0031):
+
+- **[impeccable](https://github.com/pbakaus/impeccable)** — anti-slop *quality*:
+  detector hooks fire after every UI edit plus a deep pass at Stop (~60
+  deterministic anti-pattern rules; Node ≥ 22), and `/impeccable` ships 23
+  commands (`audit`, `critique`, `polish`, …).
+- **styles-library** — visual *direction*: 18 reusable style briefs; the
+  `style-picker` skill auto-triggers when UI work starts with no fixed
+  direction and proposes a primary + alternate. (Private repo — installs need
+  GitHub access to it.)
+
+Claude Code offers the install to anyone who trusts the repo and, with
+`autoUpdate: true` on both marketplace entries, refreshes them in the
+background. The scaffolded workflow: pick the direction with style-picker →
+`/impeccable init` captures it into `DESIGN.md` → the hooks enforce it; the
+project CLAUDE.md adds the gate "`/impeccable audit` before a UI feature is
+done, `/impeccable polish` before shipping."
+
 ## The two flavors
 
 - **Gated nightly (recommended default).** A scheduled build produces one PR per

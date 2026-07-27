@@ -1,0 +1,17 @@
+{
+  "$comment_design_plugins": "Merged into .claude/settings.json by /core:new-project for projects with a web UI (skipped for backend-only). Declares two third-party design plugins: impeccable (pbakaus/impeccable — anti-slop detector hooks + /impeccable commands) and styles-library (lbtbly/styles-library — visual direction picker; PRIVATE repo: install succeeds only with GitHub access to it). On repo trust Claude Code prompts to install both; autoUpdate:true opts into background updates (third-party marketplaces default to off; updates land on next launch or /reload-plugins). Impeccable's hooks need node >= 22 on PATH and degrade gracefully without it. Remove keys to drop a plugin.",
+  "extraKnownMarketplaces": {
+    "impeccable": {
+      "source": { "source": "github", "repo": "pbakaus/impeccable" },
+      "autoUpdate": true
+    },
+    "styles-library": {
+      "source": { "source": "github", "repo": "lbtbly/styles-library" },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": {
+    "impeccable@impeccable": true,
+    "styles-library@styles-library": true
+  }
+}

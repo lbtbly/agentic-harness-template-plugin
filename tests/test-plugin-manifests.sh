@@ -173,4 +173,18 @@ done
 ! grep -h -- "--bare" "$R/plugins/orchestrator/templates/orchestrator/runtime/"*.yml "$R/plugins/orchestrator/templates/orchestrator/runtime/"*.sh 2>/dev/null | grep -v "^\s*#" | grep -q .
 check "no actual claude invocation uses --bare (comments excepted)" $?
 
+# ADR-0031 — third-party design plugins (impeccable + styles-library) for UI projects:
+# declared via the settings-design merge, never vendored, auto-updated by the marketplace
+SD="$R/plugins/core/templates/settings-design.json"
+jq -e . "$SD" >/dev/null 2>&1; check "settings-design template is valid JSON" $?
+jq -e '.extraKnownMarketplaces.impeccable.source.repo == "pbakaus/impeccable"' "$SD" >/dev/null 2>&1; check "settings-design: impeccable marketplace declared" $?
+jq -e '.extraKnownMarketplaces["styles-library"].source.repo == "lbtbly/styles-library"' "$SD" >/dev/null 2>&1; check "settings-design: styles-library marketplace declared" $?
+jq -e '[.extraKnownMarketplaces[].autoUpdate] | all' "$SD" >/dev/null 2>&1; check "settings-design: autoUpdate on for both marketplaces" $?
+jq -e '.enabledPlugins["impeccable@impeccable"] == true and .enabledPlugins["styles-library@styles-library"] == true' "$SD" >/dev/null 2>&1; check "settings-design: both design plugins enabled" $?
+jq -e 'has("enabledPlugins") | not' "$R/plugins/core/templates/settings.json" >/dev/null 2>&1; check "base settings template stays permissions-only (no enabledPlugins)" $?
+grep -q "settings-design.json" "$NP"; check "new-project merges the design settings for web-UI projects" $?
+grep -q "impeccable init" "$NP"; check "new-project chains /impeccable init after install" $?
+grep -q "impeccable audit" "$NP"; check "new-project bakes the audit-before-done workflow rule" $?
+grep -q "impeccable-ignore-start" "$R/plugins/core/templates/gitignore-impeccable"; check "gitignore-impeccable fragment carries refresh markers" $?
+
 echo "---"; echo "$PASS ok, $FAIL failure(s)"; [ "$FAIL" -eq 0 ]
