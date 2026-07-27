@@ -18,6 +18,13 @@ while IFS= read -r d; do
 done < "$AL"
 check "every allowlist domain present in BOTH sandbox settings and firewall" $miss
 grep -q "egress-allowlist" "$FW"; check "firewall documents/reads the shared allowlist" $?
+# A remote backend pushes state from inside the sandbox: if its host is not
+# reachable, every push fails closed mid-run. The hosts stay COMMENTED (opt-in,
+# "every entry widens the blast radius") but must remain documented, or the
+# requirement becomes invisible again.
+for b in api.linear.app api.notion.com atlassian.net gitlab.com; do
+  grep -q "$b" "$AL"; check "allowlist documents the board host for: $b" $?
+done
 jq -e '.enabledMcpjsonServers == ["playwright"]' "$SET" >/dev/null 2>&1; check "granular MCP enable list (playwright only)" $?
 jq -e '.enableAllProjectMcpServers' "$SET" >/dev/null 2>&1 && r=1 || r=0; [ "$r" = 0 ]; check "broad enableAllProjectMcpServers removed" $?
 jq -e '[.sandbox.credentials.envVars[] | select(.name=="ANTHROPIC_API_KEY" and .mode=="deny")] | length == 1' "$SET" >/dev/null 2>&1

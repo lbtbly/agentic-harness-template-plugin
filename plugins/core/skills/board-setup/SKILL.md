@@ -1,10 +1,10 @@
 ---
 name: board-setup
-description: Creates or adopts the epic-lifecycle board on Notion or Jira (MCP-first), audits adopted boards, wires state.config.json. Use when the backend is notion or jira.
+description: Creates or adopts the epic-lifecycle board on Notion, Jira or Linear (MCP-first), audits adopted boards, wires state.config.json. Use when the backend is notion, jira or linear.
 disable-model-invocation: true
 ---
 
-# /core:board-setup — create the board & the epic lifecycle (Notion / Jira)
+# /core:board-setup — create the board & the epic lifecycle (Notion / Jira / Linear)
 
 The board is the human-browsable face of the state layer: one column (or select
 value) per lifecycle state, one item per epic. This skill creates it once and
@@ -25,7 +25,7 @@ Notion page or Jira issue does nothing to the loop.
 
 ## Two lanes — use the one that's available
 
-**MCP-first (no credentials):** if the session has an Atlassian/Jira or Notion MCP
+**MCP-first (no credentials):** if the session has an Atlassian/Jira, Notion or Linear MCP
 connector, use IT for everything this skill does — creating the database/issues,
 setting properties/labels, the verification roundtrip. Do not ask for a token.
 **Keychain lane (R11)**: if `CLAUDE_PLUGIN_OPTION_BOARD_TOKEN` is set (the
@@ -33,7 +33,7 @@ orchestrator plugin's `userConfig` — the value lives in the OS keychain, never
 in a file), the headless adapters use it as the board token: export it as
 `NOTION_TOKEN`/`JIRA_API_TOKEN` in the runner env. Prefer it over ad-hoc env
 setup; never echo it. **Token lane (only for the unattended loop):** the `pm-jira.js`/`pm-notion.js`
-adapters run headlessly from cron, where interactive MCP OAuth does not exist
+adapters (and `pm-linear.js`) run headlessly from cron, where interactive MCP OAuth does not exist
 (ADR-0007) — so the env-var NAMES below become necessary only at
 `/orchestrator:enable-orchestrator` time. Provisioning today needs none of them;
 say so plainly and defer the token step until the loop is enabled.
@@ -178,3 +178,59 @@ GUARDRAILS: never store a token value; never re-provision an existing board
 without explicit confirmation (idempotent adopt-if-exists first); the `Suggested`
 lane is human-triage-only (the night loop never builds from it); disabling the
 orchestrator later PRESERVES this board and all its data.
+
+## Linear
+
+Linear needs the least provisioning of any backend, because its model already
+matches the harness's (ADR-0027):
+
+| harness | Linear |
+|---|---|
+| initiative | **Project** |
+| epic | **Issue** (label `orch-epic`) |
+| child / task | **Sub-issue** via `parentId` (label `orch-child`) |
+| lifecycle state | **workflow state**, via `linear.stateMap` |
+
+**What to do**
+
+1. **Pick the team.** Everything is scoped to one Linear team; record its key
+   (the `ENG` in `ENG-123`) as `linear.teamKey` in `orchestrator/state.config.json`.
+2. **Map the 12 lifecycle states onto the team's real workflow states.** Linear
+   ships Backlog / Todo / In Progress / In Review / Done / Canceled, so the map is
+   many-to-one out of the box and **nothing needs creating**:
+
+   ```json
+   { "backend": "linear", "forge": "github",
+     "linear": { "teamKey": "ENG", "stateMap": {
+       "Suggested": "Backlog", "Backlog": "Backlog", "Needs-plan": "Backlog",
+       "Planned": "Todo", "In-progress": "In Progress",
+       "Needs-review": "In Review", "Changes-requested": "In Review",
+       "Approved": "Done", "Merged": "Done",
+       "Blocked": "Todo", "Paused": "Todo", "Cancelled": "Canceled" } } }
+   ```
+
+   Run `orch state health` — it validates every target against the team's **real**
+   workflow states and names any that are missing. Add those in Linear under
+   *Team settings → Workflow* (the API cannot create workflow states), or leave
+   them out and that state falls back to an `orch-state-*` label.
+3. **Create a Project per initiative** if you want the native tier. The adapter
+   files an epic under a Project whose name matches its `initiative` field, and
+   **never creates one implicitly** — inventing projects from a free-text field is
+   how boards get littered. No match → a warning, the value stays in the record,
+   the run continues.
+4. **Labels are created on demand** (`orch-epic`, `orch-child`, `orch-state-*`,
+   `orch-complexity-*`). Set `linear.createMissingLabels: false` to forbid that on
+   a governed workspace; the lifecycle then relies entirely on `stateMap`.
+
+**Token (headless lane only).** `LINEAR_API_KEY` — a personal key from
+*Settings → Security & access → Personal API keys*. Personal keys are sent raw in
+the `Authorization` header; only OAuth tokens use `Bearer`, and the adapter
+detects which from the prefix. **Name only, never the value** (`docs/SECURITY.md`).
+
+**Egress.** Uncomment `api.linear.app` in `orchestrator/egress-allowlist.txt` and
+mirror it into both enforcers before enabling the unattended loop — otherwise the
+firewall fails closed on every state push mid-run.
+
+**No audit lane.** Unlike Notion and Jira there is no schema to adopt or repair:
+a Linear team already has states and labels, so `health` is the whole check.
+

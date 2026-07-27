@@ -30,6 +30,14 @@ plan-gate, per-PR OK) stays untouched — this ADDS the unattended Phase B on to
    protected-branches API) that direct pushes are rejected and PR + review +
    status checks are required, and that the orchestrator's token **cannot
    bypass** it. If any precondition fails → stop and list what's missing.
+   **Board reachable from inside the sandbox**: if `state.config.json` `backend`
+   is not `none`, its host must be in `orchestrator/egress-allowlist.txt` AND in
+   both enforcers (`settings.orchestrator.json` `sandbox.network.allowedDomains`
+   and `.devcontainer/init-firewall.sh`). The hosts ship COMMENTED — uncomment the
+   one you use. Miss this and the firewall fails closed on every `orch state
+   push-*` **mid-run**, which reads as the loop mysteriously losing its state.
+   `api.linear.app` (linear) · `api.notion.com` (notion) · `<site>.atlassian.net`
+   (jira, per-tenant) · your GitLab host.
    The dry-run phase (below) is the only exception.
 3. **Runtime**: `routines` · `github-actions` · `gitlab-ci` (VPN/self-hosted →
    gitlab-ci).

@@ -242,7 +242,10 @@ function rollupInitiatives(all, state) {
     }));
   } else {
     const by = new Map();
-    for (const e of all.filter((e) => (e.level ?? 'epic') !== 'initiative')) {
+    // EPICS only. A child belongs to its parent epic, not directly to an
+    // initiative — including them made every un-parented child conjure an
+    // "unassigned" initiative that does not exist on anyone's board.
+    for (const e of all.filter((e) => (e.level ?? 'epic') === 'epic')) {
       const k = e.initiative || 'unassigned';
       if (!by.has(k)) by.set(k, []);
       by.get(k).push(e);
