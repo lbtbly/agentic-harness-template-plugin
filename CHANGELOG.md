@@ -3,6 +3,23 @@
 All notable changes to the harness marketplace. Format: Keep a Changelog; versions are
 the marketplace `metadata.version` (per-plugin versions in each plugin.json).
 
+## [1.6.0] — 2026-07-27
+### Added
+- **Third-party design plugins for UI projects** (ADR-0031). `/core:new-project` gains a
+  **UI surface?** question; `web UI` projects get `templates/settings-design.json`
+  deep-merged (additive jq merge) into `.claude/settings.json`, declaring two external
+  plugins with `autoUpdate: true`: **impeccable** (`pbakaus/impeccable` — anti-slop
+  detector hooks after every UI edit + Stop deep pass, `/impeccable` with 23 commands)
+  and **styles-library** (`lbtbly/styles-library`, private — style-picker visual
+  direction briefs). Claude Code prompts installs on repo trust and refreshes both in
+  the background. The scaffolder also appends impeccable's marker-wrapped gitignore
+  block (`templates/gitignore-impeccable`), pins `node = "22"` when runtime pinning is
+  on (the hooks need Node ≥ 22), chains the workflow (style-picker direction →
+  `/impeccable init` → hooks enforce), and bakes a CLAUDE.md rule: `/impeccable audit`
+  before a UI feature is done, `/impeccable polish` before shipping. Upgrade mode offers
+  the same block additively to existing scaffolds. Neither plugin is vendored or added
+  to the marketplace (still 5 entries); no orchestrator DoD wiring (deferred).
+
 ## [1.5.3] — 2026-07-27
 ### Added
 - **Notion gets a real hierarchy** (ADR-0030). Reported from use: the board was flat — no

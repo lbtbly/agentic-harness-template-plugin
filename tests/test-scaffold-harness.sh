@@ -25,6 +25,13 @@ cp "$T/settings.json" "$D/.claude/settings.json"
 cp "$T/CLAUDE.md" "$D/CLAUDE.md"
 ( cd "$D" && CLAUDE_PROJECT_DIR="$D" bash tests/run-tests.sh >/dev/null 2>&1 )
 check "fresh scaffold: tests/run-tests.sh exits green (day-0 suite exists)" $?
+
+# --- ADR-0031: the web-UI design-plugin merge is additive, never destructive ---
+jq -s '.[0] * .[1]' "$D/.claude/settings.json" "$T/settings-design.json" > "$D/.claude/settings.merged.json"
+jq -e . "$D/.claude/settings.merged.json" >/dev/null 2>&1; check "design merge: result is valid JSON" $?
+jq -e '.permissions.defaultMode == "plan"' "$D/.claude/settings.merged.json" >/dev/null 2>&1; check "design merge: defaultMode plan survives" $?
+jq -e '.enabledPlugins["impeccable@impeccable"] == true and .enabledPlugins["styles-library@styles-library"] == true' "$D/.claude/settings.merged.json" >/dev/null 2>&1
+check "design merge: both design plugins land in enabledPlugins" $?
 rm -rf "$D"
 
 echo "---"; echo "$PASS ok, $FAIL failure(s)"; [ "$FAIL" -eq 0 ]
