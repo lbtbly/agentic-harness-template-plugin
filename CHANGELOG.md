@@ -3,6 +3,49 @@
 All notable changes to the harness marketplace. Format: Keep a Changelog; versions are
 the marketplace `metadata.version` (per-plugin versions in each plugin.json).
 
+## [1.8.0] — 2026-07-27
+### Added
+- **`local` runtime — the nightly loop on the operator's own machine** (ADR-0033). All
+  three shipped runtimes were remote, so a solo operator picked `github-actions` by
+  elimination and inherited three secrets, CI minutes and a plugin-fetch step that exist
+  only because the work moved off the machine. `local` schedules
+  `orchestrator/runtime/local-run.sh` from launchd / systemd / cron and uses the `claude`
+  and `gh` already logged in: **zero secrets** (`CLAUDE_CODE_OAUTH_TOKEN`, `GH_TOKEN` and
+  `ORCH_PLUGIN_REPO_TOKEN` are all skipped by construction), zero CI minutes, no cloud
+  dependency. The wrapper adds a single-instance lock, a scheduler-proof `PATH` (launchd
+  and cron source no profile), run logs under `.orch/logs/`, and refuses to start unless
+  the OS sandbox is **fail-closed** — on your own machine there is no devcontainer as an
+  outer wall, so `sandbox.failIfUnavailable` must be `true`. The container lane stays
+  opt-in. New `runtime/local.md` (launchd plist, systemd timer, cron, wake scheduling,
+  the awake-machine caveat) and `test-local-runtime.sh` (23 assertions, including a live
+  exercise of the fail-closed refusal).
+
+### Changed
+- **Branch protection is now three-state and machine-readable** (ADR-0032). Reported from
+  a real first install: on a **private repo on a free GitHub plan** neither branch
+  protection nor rulesets exist — both APIs answer `403 "Upgrade to GitHub Pro or make
+  this repository public"` — and no token shape is branch-scopable. The precondition was
+  binary, so the skill could only stop; it re-derived the same argument on every
+  invocation, recommended making the repository **public**, and left the decision as prose
+  in three documents (including the line-budgeted `CLAUDE.md`, billed every session).
+  `risk-policy.json` gains `forgeProtection`: `required` (default, unchanged behavior) or
+  `unavailable-accepted`, which **force-disables auto-merge in `may_automerge()`** — every
+  merge stays human, and editing `autoMergeRiskLevels` cannot re-arm it. Enablement now
+  distinguishes protected / absent-but-settable (`404`) / unsatisfiable (`403`), records
+  the answer in that one field, and no longer proposes publishing a private repo.
+  Run-to-completion under acceptance completes to **PRs, never to `main`** — stated where
+  the mode is documented. New `test-forge-protection.sh` (17 assertions).
+- **The per-night token cap is asked per auth lane, not unconditionally.** It is a cost
+  control on the metered lane; on a subscription the binding constraint is the usage
+  limit, which `run-with-limits.sh` already handles by checkpointing and resuming. On
+  `local`, `ORCH_MAX_EPICS` defaults to **2** — one machine, shared with your own work.
+- `/orchestrator:disable-orchestrator` removes OS scheduler entries too. launchd agents
+  and systemd timers live **outside the repo** and survive any amount of file deletion.
+
+### Decided
+- [ADR-0032 — Forge branch protection: required, or explicitly accepted as unavailable](docs/adr/0032-forge-protection-graduated.md)
+- [ADR-0033 — `local` runtime: the nightly loop on the operator's own machine](docs/adr/0033-local-runtime.md)
+
 ## [1.7.0] — 2026-07-27
 ### Changed
 - **Version alignment.** Every plugin (core, orchestrator, workbench, formatting, ci) and

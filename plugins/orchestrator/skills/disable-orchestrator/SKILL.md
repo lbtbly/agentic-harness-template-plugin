@@ -13,7 +13,14 @@ consumer of the state layer, not its owner.
 
 1. The schedules: `.github/workflows/nightly-orchestrator.yml`, or the
    `nightly-orchestrator`/`deliver-digest` jobs in `.gitlab-ci.yml`, or the
-   routine(s) (`/schedule` list → delete the nightly, retry, and delivery lanes).
+   routine(s) (`/schedule` list → delete the nightly, retry, and delivery lanes),
+   or — `local` runtime (ADR-0033) — the OS scheduler entries, which live
+   **outside the repo** and therefore survive any amount of file deletion:
+   macOS `launchctl bootout gui/$(id -u)/com.harness.orch.{nightly,retry}` then
+   remove the plists from `~/Library/LaunchAgents/`; Linux
+   `systemctl --user disable --now orch-{nightly,retry}.timer`; or the crontab
+   lines. Verify with `launchctl list | grep orch` / `systemctl --user list-timers`
+   — a disable that leaves a live timer is not a disable.
 2. Loop config: `orchestrator/risk-policy.json`,
    `orchestrator/settings.orchestrator.json`, `orchestrator/adapters/deploy.sh`,
    `orchestrator/adapters/notify-digest.sh`, `orchestrator/notify.config.json`,
@@ -39,5 +46,6 @@ park/unpark.
 
 `bash tests/run-tests.sh` green; `orch state health` still ok;
 `orch state pull-status` still returns the epics; no schedule left
-(`gh workflow list` / `.gitlab-ci.yml` grep / `/schedule` list).
+(`gh workflow list` / `.gitlab-ci.yml` grep / `/schedule` list /
+`launchctl list | grep orch` / `systemctl --user list-timers`).
 Propose commit: `chore: disable nightly orchestrator (board preserved)`.
