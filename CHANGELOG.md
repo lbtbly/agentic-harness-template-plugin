@@ -3,6 +3,13 @@
 All notable changes to the harness marketplace. Format: Keep a Changelog; versions are
 the marketplace `metadata.version` (per-plugin versions in each plugin.json).
 
+## [1.7.0] — 2026-07-27
+### Changed
+- **Version alignment.** Every plugin (core, orchestrator, workbench, formatting, ci) and
+  the marketplace now report **1.7.0** — a one-time sync that forces an update-cache
+  refresh for all installed copies. No content changes beyond 1.6.0. First tagged release
+  since v1.4.2 (`v1.7.0`).
+
 ## [1.6.0] — 2026-07-27
 ### Added
 - **Third-party design plugins for UI projects** (ADR-0031). `/core:new-project` gains a
