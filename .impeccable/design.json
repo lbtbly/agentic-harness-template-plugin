@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-27T00:00:00Z",
+  "title": "Design System: The Overnight Harness",
+  "extensions": {
+    "colorMeta": {
+      "bg": { "role": "neutral", "displayName": "Pitch Ground", "canonical": "#0B0B0B", "tonalRamp": ["#0B0B0B", "#151515", "#1C1C1C", "#262626", "#333333", "#5F5F5C", "#8C8C8C", "#FAFAFA"] },
+      "surface": { "role": "neutral", "displayName": "Graphite Surface", "canonical": "#1C1C1C", "tonalRamp": ["#0B0B0B", "#151515", "#1C1C1C", "#262626", "#333333", "#5F5F5C", "#8C8C8C", "#FAFAFA"] },
+      "raised": { "role": "neutral", "displayName": "Raised Graphite", "canonical": "#262626", "tonalRamp": ["#0B0B0B", "#151515", "#1C1C1C", "#262626", "#333333", "#5F5F5C", "#8C8C8C", "#FAFAFA"] },
+      "ink": { "role": "neutral", "displayName": "Paper Ink", "canonical": "#FAFAFA", "tonalRamp": ["#0B0B0B", "#262626", "#5F5F5C", "#8C8C8C", "#D9D9D5", "#EAEAE8", "#F3F3F1", "#FAFAFA"] },
+      "muted": { "role": "neutral", "displayName": "Bench Grey", "canonical": "#8C8C8C", "tonalRamp": ["#151515", "#262626", "#3D3D3D", "#5F5F5C", "#767674", "#8C8C8C", "#B5B5B3", "#E2E2E0"] },
+      "line": { "role": "neutral", "displayName": "Hairline", "canonical": "#333333", "tonalRamp": ["#0B0B0B", "#1C1C1C", "#262626", "#333333", "#4A4A4A", "#6E6E6E", "#A8A8A6", "#D9D9D5"] },
+      "code-bg": { "role": "neutral", "displayName": "Terminal Ground", "canonical": "#151515", "tonalRamp": ["#0B0B0B", "#101010", "#151515", "#1C1C1C", "#262626", "#333333", "#5A5A5A", "#8C8C8C"] },
+      "accent": { "role": "primary", "displayName": "Signal Green", "canonical": "#3FBF52", "tonalRamp": ["#04170A", "#052A0C", "#0C4417", "#135F22", "#1B6B28", "#2C9A3E", "#3FBF52", "#8FE09B"] },
+      "accent-text": { "role": "primary", "displayName": "Signal Green (Type)", "canonical": "#3FBF52", "tonalRamp": ["#04170A", "#052A0C", "#0C4417", "#135F22", "#1B6B28", "#2C9A3E", "#3FBF52", "#8FE09B"] },
+      "accent-ink": { "role": "primary", "displayName": "Signal Green Shadow", "canonical": "#052A0C", "tonalRamp": ["#04170A", "#052A0C", "#0C4417", "#135F22", "#1B6B28", "#2C9A3E", "#3FBF52", "#8FE09B"] },
+      "warn": { "role": "secondary", "displayName": "Human Amber", "canonical": "#E0A32E", "tonalRamp": ["#1E1503", "#3A2A07", "#57400C", "#725412", "#8A5E00", "#B8831F", "#E0A32E", "#F0CE85"] },
+      "negative": { "role": "tertiary", "displayName": "Gate Red", "canonical": "#E0503F", "tonalRamp": ["#1F0A07", "#3A130E", "#571C15", "#7A281E", "#B03325", "#CB4232", "#E0503F", "#EF9A8F"] },
+      "negative-text": { "role": "tertiary", "displayName": "Gate Red (Type)", "canonical": "#E86A5A", "tonalRamp": ["#1F0A07", "#3A130E", "#571C15", "#7A281E", "#B03325", "#CB4232", "#E86A5A", "#F3ADA2"] },
+      "dot": { "role": "neutral", "displayName": "Lattice Dot", "canonical": "rgba(255,255,255,.10)", "tonalRamp": ["rgba(255,255,255,.02)", "rgba(255,255,255,.04)", "rgba(255,255,255,.06)", "rgba(255,255,255,.08)", "rgba(255,255,255,.10)", "rgba(255,255,255,.14)", "rgba(255,255,255,.20)", "rgba(255,255,255,.30)"] },
+      "light-bg": { "role": "neutral", "displayName": "Bench Paper", "canonical": "#F3F3F1", "tonalRamp": ["#0B0B0B", "#262626", "#5F5F5C", "#8C8C8C", "#D9D9D5", "#EAEAE8", "#F3F3F1", "#FFFFFF"] },
+      "light-surface": { "role": "neutral", "displayName": "Light Surface", "canonical": "#FFFFFF", "tonalRamp": ["#0B0B0B", "#262626", "#5F5F5C", "#8C8C8C", "#D9D9D5", "#EAEAE8", "#F3F3F1", "#FFFFFF"] },
+      "light-raised": { "role": "neutral", "displayName": "Light Raised", "canonical": "#EAEAE8", "tonalRamp": ["#0B0B0B", "#262626", "#5F5F5C", "#8C8C8C", "#D9D9D5", "#EAEAE8", "#F3F3F1", "#FFFFFF"] },
+      "light-ink": { "role": "neutral", "displayName": "Light Ink", "canonical": "#0B0B0B", "tonalRamp": ["#0B0B0B", "#262626", "#5F5F5C", "#8C8C8C", "#D9D9D5", "#EAEAE8", "#F3F3F1", "#FFFFFF"] },
+      "light-muted": { "role": "neutral", "displayName": "Light Bench Grey", "canonical": "#5F5F5C", "tonalRamp": ["#151515", "#262626", "#3D3D3D", "#5F5F5C", "#767674", "#8C8C8C", "#B5B5B3", "#E2E2E0"] },
+      "light-line": { "role": "neutral", "displayName": "Light Hairline", "canonical": "#D9D9D5", "tonalRamp": ["#0B0B0B", "#1C1C1C", "#333333", "#5F5F5C", "#A8A8A6", "#D9D9D5", "#EAEAE8", "#F3F3F1"] },
+      "light-accent-text": { "role": "primary", "displayName": "Deep Signal Green", "canonical": "#1B6B28", "tonalRamp": ["#04170A", "#052A0C", "#0C4417", "#135F22", "#1B6B28", "#2C9A3E", "#3FBF52", "#8FE09B"] },
+      "light-warn": { "role": "secondary", "displayName": "Deep Human Amber", "canonical": "#8A5E00", "tonalRamp": ["#1E1503", "#3A2A07", "#57400C", "#725412", "#8A5E00", "#B8831F", "#E0A32E", "#F0CE85"] },
+      "light-negative": { "role": "tertiary", "displayName": "Deep Gate Red", "canonical": "#B03325", "tonalRamp": ["#1F0A07", "#3A130E", "#571C15", "#7A281E", "#B03325", "#CB4232", "#E0503F", "#EF9A8F"] },
+      "light-code-bg": { "role": "neutral", "displayName": "Light Terminal Ground", "canonical": "#15150F", "tonalRamp": ["#0B0B0B", "#101010", "#15150F", "#1C1C1C", "#262626", "#333333", "#5A5A5A", "#8C8C8C"] },
+      "light-dot": { "role": "neutral", "displayName": "Light Lattice Dot", "canonical": "rgba(0,0,0,.13)", "tonalRamp": ["rgba(0,0,0,.03)", "rgba(0,0,0,.05)", "rgba(0,0,0,.08)", "rgba(0,0,0,.10)", "rgba(0,0,0,.13)", "rgba(0,0,0,.18)", "rgba(0,0,0,.26)", "rgba(0,0,0,.40)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Exactly one per page: the hero h1, capped at 17ch. The only type above 20px in the system." },
+      "headline": { "displayName": "Headline", "purpose": "Section h2. The working ceiling for everything below the hero." },
+      "title": { "displayName": "Title", "purpose": "Card h3, step h4, schema frame titles." },
+      "body": { "displayName": "Body", "purpose": "Reading prose at 78ch; leads use the same size in --muted at 74ch." },
+      "body-dense": { "displayName": "Body Dense", "purpose": "Card and step copy where density beats comfort." },
+      "label": { "displayName": "Label", "purpose": "Mono micro-labels: eyebrows, callout header strips, table headers, nav group headers, legends, footers." },
+      "figure": { "displayName": "Figure", "purpose": "The four hero statistics only. Tabular sans numerals inside a mono cell." },
+      "code": { "displayName": "Code", "purpose": "Code blocks and the inspector drawer's source view." }
+    },
+    "shadows": [
+      { "name": "bench", "value": "0 2px 8px rgb(0 0 0 / .5)", "purpose": "The only shadow on the page body. Cards, callouts, lifecycle nodes, schema frames, the hero principle line. Light theme: 0 1px 3px rgb(0 0 0 / .10)." },
+      { "name": "drawer", "value": "0 8px 32px rgb(0 0 0 / .7)", "purpose": "Reserved for the one element that leaves the page plane: the slide-in file viewer. Light theme: 0 8px 28px rgb(0 0 0 / .16)." }
+    ],
+    "motion": [
+      { "name": "drawer-slide", "value": "transform .12s ease-out", "purpose": "The inspector drawer entering from the right edge." },
+      { "name": "scrim-fade", "value": "opacity .12s", "purpose": "The flat 60% black backdrop. Dimmed, never blurred." },
+      { "name": "anchor-scroll", "value": "scroll-behavior: smooth", "purpose": "In-page navigation from the rail and from clickable schema nodes." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "960px" }
+    ],
+    "surfaceTextures": [
+      { "name": "dot-lattice", "value": "radial-gradient(var(--dot) 1px, transparent 1px) / 24px 24px at -1px -1px", "purpose": "The infinite canvas under the page and inside every schema frame." },
+      { "name": "grain", "value": "fixed fractalNoise SVG at opacity .03 (light: .02)", "purpose": "Kills banding on the near-black ground. Never above 3%." }
+    ],
+    "constraints": [
+      "Both pages open from a local clone over file://: everything inline, no remote font, CSS, JS or image, ever.",
+      "Both themes are required; the pre-paint theme script stays in <head> to avoid a flash.",
+      "START_HERE keeps its data-file chips, its slide-in file viewer, and its links to BOARD_SETUP.",
+      "BOARD_SETUP must contain no data-file attributes.",
+      "tests/test-board-guide.sh pins ~50 factual prose claims in BOARD_SETUP; they must survive verbatim.",
+      "tools/embed-files.py must be re-run after any edit to START_HERE.html; CI fails on payload drift."
+    ]
+  },
+  "components": [
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "The only button in the system. Theme toggle, schema expand, drawer close.",
+      "html": "<button class=\"ds-btn-ghost\" type=\"button\">&#9680; toggle theme</button>",
+      "css": ".ds-btn-ghost { padding: 7px 10px; border-radius: 8px; cursor: pointer; background: var(--raised, #262626); border: 1px solid var(--line, #333333); color: var(--muted, #8C8C8C); font-size: 11px; font-family: var(--mono, ui-monospace, Menlo, monospace); } .ds-btn-ghost:hover { color: var(--ink, #FAFAFA); } .ds-btn-ghost:focus-visible { outline: 1px solid var(--accent, #3FBF52); outline-offset: 2px; }"
+    },
+    {
+      "name": "Signal Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Outlined, tinted status tag. Variants recolor text and border only, never the fill.",
+      "html": "<span class=\"ds-chip ds-chip-live\">auto</span> <span class=\"ds-chip ds-chip-human\">gated</span> <span class=\"ds-chip ds-chip-esc\">escalate</span> <span class=\"ds-chip\">opus</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 500; letter-spacing: .04em; background: var(--raised, #262626); color: var(--muted, #8C8C8C); border: 1px solid var(--line, #333333); white-space: nowrap; font-family: var(--sans, Inter, sans-serif); } .ds-chip-live { color: var(--accent-text, #3FBF52); border-color: color-mix(in srgb, var(--accent, #3FBF52) 40%, var(--line, #333333)); } .ds-chip-human { color: var(--warn, #E0A32E); border-color: color-mix(in srgb, var(--warn, #E0A32E) 40%, var(--line, #333333)); } .ds-chip-esc { color: var(--negative-text, #E86A5A); border-color: color-mix(in srgb, var(--negative, #E0503F) 40%, var(--line, #333333)); }"
+    },
+    {
+      "name": "Node Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The workhorse container. Status dot instead of a pictogram, dense 13.5px body.",
+      "html": "<div class=\"ds-card\"><h3><span class=\"ds-ic\"></span>A place per work item</h3><p>One card per epic, carrying an id in its title. The full record travels as JSON inside the card.</p></div>",
+      "css": ".ds-card { background: var(--surface, #1C1C1C); border: 1px solid var(--line, #333333); border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgb(0 0 0 / .5); font-family: var(--sans, Inter, sans-serif); max-width: 340px; } .ds-card h3 { margin: 0 0 6px; font-size: 14px; font-weight: 500; line-height: 1.25; letter-spacing: -.01em; color: var(--ink, #FAFAFA); display: flex; align-items: center; gap: 9px; } .ds-card p { margin: 0; color: var(--muted, #8C8C8C); font-size: 13.5px; line-height: 1.55; } .ds-ic { width: 8px; height: 8px; border-radius: 50%; background: var(--muted, #8C8C8C); flex: 0 0 auto; }"
+    },
+    {
+      "name": "Callout",
+      "kind": "custom",
+      "refersTo": "callout",
+      "description": "The system's aside: a raised header strip with a bottom hairline, a mono label and a status dot. Never a left accent bar.",
+      "html": "<div class=\"ds-callout ds-callout-ok\"><span class=\"ds-callout-lbl\">The split everything rests on</span><p>The board shows state. Your approvals are read from the forge &mdash; the pull request &mdash; never from the board.</p></div>",
+      "css": ".ds-callout { margin: 16px 0; border-radius: 10px; background: var(--surface, #1C1C1C); border: 1px solid var(--line, #333333); max-width: 78ch; overflow: hidden; box-shadow: 0 2px 8px rgb(0 0 0 / .5); font-family: var(--sans, Inter, sans-serif); } .ds-callout-lbl { font-family: var(--mono, ui-monospace, Menlo, monospace); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; font-weight: 500; color: var(--muted, #8C8C8C); display: flex; align-items: center; gap: 7px; background: var(--raised, #262626); border-bottom: 1px solid var(--line, #333333); padding: 6px 14px; } .ds-callout-lbl::before { content: \"\"; width: 6px; height: 6px; border-radius: 50%; background: var(--muted, #8C8C8C); flex: 0 0 auto; } .ds-callout p { margin: 0; color: var(--muted, #8C8C8C); font-size: 14px; line-height: 1.65; padding: 12px 14px; } .ds-callout-ok .ds-callout-lbl { color: var(--accent-text, #3FBF52); } .ds-callout-ok .ds-callout-lbl::before { background: var(--accent, #3FBF52); } .ds-callout-warn .ds-callout-lbl { color: var(--warn, #E0A32E); } .ds-callout-warn .ds-callout-lbl::before { background: var(--warn, #E0A32E); } .ds-callout-danger .ds-callout-lbl { color: var(--negative-text, #E86A5A); } .ds-callout-danger .ds-callout-lbl::before { background: var(--negative, #E0503F); }"
+    },
+    {
+      "name": "Rail Navigation",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "The sticky 268px inspector rail: mono group headers, muted links, an accent left rule on the active item.",
+      "html": "<nav class=\"ds-nav\"><div class=\"ds-nav-grp\">Step by step</div><a class=\"ds-nl ds-nl-on\" href=\"#linear\">Linear</a><a class=\"ds-nl\" href=\"#notion\">Notion</a><a class=\"ds-nl\" href=\"#jira\">Jira</a></nav>",
+      "css": ".ds-nav { width: 268px; padding: 20px 12px; background: var(--surface, #1C1C1C); border-right: 1px solid var(--line, #333333); font-family: var(--sans, Inter, sans-serif); } .ds-nav-grp { font-family: var(--mono, ui-monospace, Menlo, monospace); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted, #8C8C8C); margin: 0 10px 6px; font-weight: 500; } .ds-nl { display: block; padding: 6px 10px; border-radius: 6px; color: var(--muted, #8C8C8C); font-size: 12.5px; line-height: 1.45; border-left: 2px solid transparent; margin-left: -2px; text-decoration: none; } .ds-nl:hover { color: var(--ink, #FAFAFA); background: var(--raised, #262626); } .ds-nl-on { color: var(--ink, #FAFAFA); background: var(--raised, #262626); border-left-color: var(--accent, #3FBF52); }"
+    },
+    {
+      "name": "Statistics Strip",
+      "kind": "custom",
+      "refersTo": "figure-cell",
+      "description": "The first-viewport evidence band: hairline gutters made of the 1px gap over a --line background.",
+      "html": "<div class=\"ds-badges\"><span class=\"ds-badge\"><b>962</b> assertions across 39 suites</span><span class=\"ds-badge\"><b>26</b> ADRs &middot; immutable once accepted</span><span class=\"ds-badge\"><b>12</b> lifecycle states</span><span class=\"ds-badge\"><b>4</b> runtimes</span></div>",
+      "css": ".ds-badges { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line, #333333); border: 1px solid var(--line, #333333); border-radius: 10px; overflow: hidden; } .ds-badge { display: flex; flex-direction: column; gap: 3px; padding: 13px 16px; background: var(--surface, #1C1C1C); font-size: 10.5px; line-height: 1.5; color: var(--muted, #8C8C8C); font-family: var(--mono, ui-monospace, Menlo, monospace); } .ds-badge b { color: var(--ink, #FAFAFA); font-size: 22px; line-height: 1.1; font-weight: 500; font-family: var(--sans, Inter, sans-serif); font-variant-numeric: tabular-nums; letter-spacing: -.02em; } @media (max-width: 960px) { .ds-badges { grid-template-columns: repeat(2, 1fr); } }"
+    },
+    {
+      "name": "Lifecycle Node",
+      "kind": "custom",
+      "refersTo": "lifecycle-node",
+      "description": "One of twelve states in a horizontally scrolling row. The status dot carries the whole semantic load.",
+      "html": "<div class=\"ds-lc ds-lc-done\"><div class=\"ds-lc-st\">Approved &rarr; Merged</div><p>Landed.</p><div class=\"ds-lc-who\">machine</div></div>",
+      "css": ".ds-lc { width: 150px; border: 1px solid var(--line, #333333); border-radius: 10px; padding: 10px 12px; background: var(--surface, #1C1C1C); display: flex; flex-direction: column; gap: 5px; box-shadow: 0 2px 8px rgb(0 0 0 / .5); } .ds-lc-st { font-family: var(--mono, ui-monospace, Menlo, monospace); font-size: 11.5px; font-weight: 500; color: var(--ink, #FAFAFA); display: flex; align-items: center; gap: 6px; } .ds-lc-st::before { content: \"\"; width: 6px; height: 6px; border-radius: 50%; background: var(--muted, #8C8C8C); flex: 0 0 auto; } .ds-lc p { margin: 0; font-size: 11.5px; color: var(--muted, #8C8C8C); line-height: 1.45; font-family: var(--sans, Inter, sans-serif); } .ds-lc-who { font-family: var(--mono, ui-monospace, Menlo, monospace); font-size: 9.5px; color: var(--muted, #8C8C8C); margin-top: auto; padding-top: 6px; border-top: 1px solid var(--line, #333333); } .ds-lc-you .ds-lc-st::before { background: var(--warn, #E0A32E); } .ds-lc-rework .ds-lc-st::before { background: var(--negative, #E0503F); } .ds-lc-done .ds-lc-st::before { background: var(--accent, #3FBF52); }"
+    },
+    {
+      "name": "File Chip",
+      "kind": "chip",
+      "refersTo": "file-chip",
+      "description": "START_HERE only. Opens the inspector drawer on the embedded source payload; the leading dot goes accent on hover, square-cornered for a directory.",
+      "html": "<span class=\"ds-flabel\">files</span> <span class=\"ds-fchip\">tools/embed-files.py</span> <span class=\"ds-fchip ds-fchip-dir\">plugins/core</span>",
+      "css": ".ds-fchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 6px; font-family: var(--mono, ui-monospace, Menlo, monospace); font-size: 10.5px; font-weight: 400; color: var(--muted, #8C8C8C); background: var(--raised, #262626); border: 1px solid var(--line, #333333); cursor: pointer; } .ds-fchip::before { content: \"\"; width: 6px; height: 6px; border-radius: 50%; background: var(--line, #333333); flex: 0 0 auto; } .ds-fchip:hover { color: var(--ink, #FAFAFA); border-color: color-mix(in srgb, var(--accent, #3FBF52) 40%, var(--line, #333333)); } .ds-fchip:hover::before { background: var(--accent, #3FBF52); } .ds-fchip-dir::before { border-radius: 2px; } .ds-flabel { font-family: var(--mono, ui-monospace, Menlo, monospace); font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted, #8C8C8C); font-weight: 500; margin-right: 2px; }"
+    },
+    {
+      "name": "Code Block",
+      "kind": "custom",
+      "refersTo": "code-block",
+      "description": "Source and terminal transcripts on a ground one notch off the page, so a block of code reads as a different material.",
+      "html": "<pre class=\"ds-pre\"><code>{\n  <span class=\"ds-c-dim\">\"backend\"</span>: <span class=\"ds-c-am\">\"linear\"</span>,\n  <span class=\"ds-c-dim\">\"forge\"</span>: <span class=\"ds-c-tl\">\"github\"</span>\n}</code></pre>",
+      "css": ".ds-pre { background: var(--code-bg, #151515); border: 1px solid var(--line, #333333); border-radius: 10px; padding: 14px 16px; overflow-x: auto; margin: 14px 0; } .ds-pre code { font-family: var(--mono, ui-monospace, Menlo, monospace); background: none; border: none; padding: 0; color: #E6E6E6; white-space: pre; font-size: 12.5px; line-height: 1.7; } .ds-c-dim { color: #7A7A7A; } .ds-c-am { color: #3FBF52; } .ds-c-tl { color: #E0A32E; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Dark Bench",
+    "overview": "This is a bench you inspect, not a brochure you scroll. Two long documents are laid out like instrument panels sitting on an infinite dotted work surface: near-black ground, matte graphite cards, hairline rules, and machine-facing strings set in mono so a config key never has to pretend to be prose. Nothing is lit from within. Nothing glows. The reader is a skeptic evaluating whether an autonomous agent can be trusted with their repo, and the visual register has to match the product's own voice: exact, unshowy, willing to state its own limits.\n\nThe palette is almost entirely neutral, and that is load-bearing rather than austere. Because the ground is graphite and the type is grey-on-black, the single green reads as an instrument light: it means live signal — a merge, a happy exit, a feedback edge that actually loops. Amber means a human moment. Red means a gate or a hazard. Those three chromatic slots are the entire color vocabulary; everything else is a neutral step. Density is deliberately high — many small true facts, packed at a 13.5–15px reading size — because the reader is technical and already warm.\n\nThe world explicitly refuses the dark-SaaS landing page: no gradient hero, no neon-on-black gloss, no frosted glass, no backdrop-filter, no colored glow behind a call to action. Depth comes from one tonal ladder (--bg to --surface to --raised) plus one tight shadow, not from light. The system ships in both light and dark, driven by a data-theme attribute on <html> with the dark theme as default, because the pages are opened from a local clone and must respect the machine they land on.",
+    "keyCharacteristics": [
+      "Near-black canvas under a 24px radial dot lattice, at 10% white (dark) / 13% black (light)",
+      "One rationed green for live signal; amber for human moments; red for gates",
+      "1px --line hairlines everywhere; corners are 6/8/10px, never pill-shaped",
+      "Mono for every machine-facing string — paths, env vars, states, counts, micro-labels",
+      "One tight shadow (0 2px 8px rgb(0 0 0 / .5)), no second elevation on the page body",
+      "A 3% fractal-noise grain overlay to kill banding on the near-black ground; never above 3%",
+      "Fully inline and self-contained: no remote font, stylesheet, script or image, ever"
+    ],
+    "rules": [
+      { "name": "The Rationed Green Rule", "body": "Green means live signal — merged, verified, the loop closing. If an element is not reporting a live positive state, it does not get the accent. A page where green appears more than a handful of times has stopped meaning anything.", "section": "colors" },
+      { "name": "The Three Slots Rule", "body": "Green, amber, red. That is the whole chromatic vocabulary; no fourth hue is introduced for any reason, and no hue is introduced by the light theme.", "section": "colors" },
+      { "name": "The Type-Only Lift Rule", "body": "#E0503F is for borders, dots and wires; #E86A5A is for glyphs. Never swap them — the pinned red fails AA at label sizes, and the lifted red is wrong on a 1px stroke.", "section": "colors" },
+      { "name": "The Same Family Rule", "body": "The light theme is the same neutral ramp inverted, not a second palette. Only --accent-text, --warn and --negative shift value, and only to clear contrast on white.", "section": "colors" },
+      { "name": "The Twenty-Pixel Ceiling Rule", "body": "Below the hero, nothing exceeds 20px. The one h1 per page is the entire exception; there is no second large moment anywhere on either document.", "section": "typography" },
+      { "name": "The Mono-Is-Machine Rule", "body": "Mono marks machine-facing strings and micro-labels only. Micro-labels are mono at 10px with .06em tracking — never tracked uppercase sans, which is the generic-dashboard tell this world refuses.", "section": "typography" },
+      { "name": "The Reading Body Rule", "body": "Body copy is 15px in --ink, not the 12px --muted of a node canvas. These are documents that must be read end to end, and the reading size is the deviation that makes that honest.", "section": "typography" },
+      { "name": "The Two Shadows Rule", "body": "There are exactly two shadows. Anything on the page uses the bench shadow or none; only the overlay drawer uses the far shadow. No hover shadow, no focus shadow, no colored shadow.", "section": "elevation" },
+      { "name": "The No-Light Rule", "body": "Nothing in this world emits light. Glow, gradient fills, glass and backdrop blur are all absent from the build and stay absent — depth is tone plus a hairline.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep everything inline and self-contained. Both pages open from a local clone over file://; no remote font, stylesheet, script, image or analytics may ever be added.",
+      "Do ship both themes. Every new token needs a light value in the :root[data-theme=\"light\"] block, and the pre-paint theme script must stay in <head> so there is no flash.",
+      "Do ration the green to live signal, and keep amber for human moments and red for gates.",
+      "Do use --negative-text for red glyphs and --negative for red borders, dots and wires.",
+      "Do set every machine-facing string in mono — paths, env vars, config keys, state names, counts, micro-labels.",
+      "Do build depth from the --bg to --surface to --raised ladder plus a 1px --line hairline, and reach for the bench shadow only when something should read as an object.",
+      "Do hold the radius scale at 4 / 6 / 8 / 10px and border every surface at exactly 1px.",
+      "Do re-run tools/embed-files.py after any edit to START_HERE.html — CI fails on payload drift.",
+      "Do preserve START_HERE's data-file chips, its slide-in file viewer, and its links to BOARD_SETUP.",
+      "Do leave BOARD_SETUP free of any data-file attribute, and leave its ~50 pinned factual claims verbatim — tests/test-board-guide.sh asserts them."
+    ],
+    "donts": [
+      "Don't add a glow, a gradient fill, a glass panel or a backdrop-filter. The scrim is dimmed, never blurred.",
+      "Don't introduce a fourth hue, a second accent, or a hue in the light ramp.",
+      "Don't exceed 20px anywhere below the hero, and don't add a second display-scale moment to a page.",
+      "Don't raise the grain overlay above 3%.",
+      "Don't add a third shadow, a hover shadow, or a colored shadow.",
+      "Don't use a saturated filled pill for a chip, or a filled/accented button — buttons are ghost, chips are outlined and tinted.",
+      "Don't put a pictogram, emoji or icon-font glyph where a status dot belongs; monoline geometry or nothing.",
+      "Don't mark an aside with a left accent bar — callouts use the header-strip node anatomy.",
+      "Don't set micro-labels in tracked uppercase sans; they are mono.",
+      "Don't re-route the schema wires as beziers; orthogonal runs with solid triangular heads are the diagram language."
+    ]
+  }
+}
