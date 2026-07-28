@@ -9,6 +9,32 @@
 set -u
 R="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 
+# --- run log ------------------------------------------------------------------
+# Everything the engine emits lands here. It used to go to /dev/null, which also
+# threw away the REASON a wave failed: an escalation with no diagnosis, and no
+# way to see which agent did what. `orchestrator/bin/watch` renders this live.
+# Self-ignoring, because the CI runtimes force-add .orch to the orch/state branch
+# and machine-local logs must never become commits.
+ORCH_LOG_DIR="${ORCH_LOG_DIR:-$R/.orch/logs}"
+mkdir -p "$ORCH_LOG_DIR" 2>/dev/null || true
+[ -f "$ORCH_LOG_DIR/.gitignore" ] || printf '*\n!.gitignore\n' > "$ORCH_LOG_DIR/.gitignore" 2>/dev/null || true
+ORCH_RUN_LOG="${ORCH_RUN_LOG:-$ORCH_LOG_DIR/run-$(date +%F).jsonl}"
+ORCH_ERR_LOG="${ORCH_ERR_LOG:-$ORCH_LOG_DIR/run-$(date +%F).err}"
+
+# stream_flags — stream-json so the run is observable while it runs, not after.
+# --forward-subagent-text (CLI v2.1.211+) is what makes subagent messages carry
+# parent_tool_use_id, i.e. what turns a blob into an agent tree. Probed, never
+# assumed: passing an unknown flag would fail EVERY wave on an older CLI.
+ORCH_STREAM="${ORCH_STREAM:-1}"
+stream_flags() {
+  [ "$ORCH_STREAM" = "1" ] || { echo "--output-format json"; return; }
+  local f="--output-format stream-json --verbose"
+  case "$(claude -p --help 2>/dev/null)" in
+    *--forward-subagent-text*) f="$f --forward-subagent-text" ;;
+  esac
+  echo "$f"
+}
+
 # orch_bin — resolve the orch CLI at call time (ORCH_BIN overridable for tests).
 orch_bin() { echo "${ORCH_BIN:-$R/orchestrator/bin/orch}"; }
 
@@ -242,11 +268,19 @@ MODELS_JSON() { jq -c . "$R/orchestrator/models.config.json" 2>/dev/null || echo
 # build_wave [epic-ids…] — ONE call per ROUND, scoped to the admitted wave.
 # maxEpics is the THROTTLED cap the loop exports before calling.
 build_wave()  { if [ -n "${ORCH_BUILD_CMD:-}" ]; then eval "$ORCH_BUILD_CMD"; else
+  local rc
+  # Appended, never piped: a pipe would hand $? to tee and hide a failed wave.
   claude -p "Run the nightly-orchestrator workflow with args {\"date\":\"$(date +%F)\",\"epics\":$(json_arr "$@"),\"maxEpics\":${ORCH_MAX_CONCURRENT:-4},\"models\":$(MODELS_JSON)}." \
     --settings "$R/orchestrator/settings.orchestrator.json" ${ORCH_PLUGIN_DIR:+--plugin-dir "$ORCH_PLUGIN_DIR"} \
     --max-turns "${ORCH_MAX_TURNS:-80}" ${ORCH_MAX_BUDGET_USD:+--max-budget-usd "$ORCH_MAX_BUDGET_USD"} \
     --strict-mcp-config --mcp-config "$R/.mcp.json" \
-    --output-format json >/dev/null 2>&1; fi; }
+    $(stream_flags) >>"$ORCH_RUN_LOG" 2>>"$ORCH_ERR_LOG"
+  rc=$?
+  # A failed wave must say why. Silent failure is what made escalations
+  # undiagnosable: the epic came back Blocked and the reason was in /dev/null.
+  [ "$rc" -eq 0 ] || { echo "build wave FAILED (exit $rc) — last lines of $ORCH_ERR_LOG:" >&2
+                       tail -5 "$ORCH_ERR_LOG" >&2; }
+  return $rc; fi; }
 verify_epic() { if [ -n "${ORCH_VERIFY_CMD:-}" ]; then eval "$ORCH_VERIFY_CMD"; else
   claude -p "Run dod-verify for epic $1; return the verdict.
 You did not build this. Verify against the feature list like a USER, not like CI.
@@ -255,7 +289,7 @@ only what you can point to evidence for. Default to reject if uncertain." \
     --output-format json --json-schema "$(cat "$R/orchestrator/verdict.schema.json")" \
     --max-turns "${ORCH_MAX_TURNS:-80}" ${ORCH_MAX_BUDGET_USD:+--max-budget-usd "$ORCH_MAX_BUDGET_USD"} \
     --strict-mcp-config --mcp-config "$R/.mcp.json" \
-    2>/dev/null | jq -c '.structured_output // .result // .'; fi; }
+    2>>"$ORCH_ERR_LOG" | jq -c '.structured_output // .result // .'; fi; }
 # risk: computed per epic BEFORE any merge decision — from the real diff via
 # compute_risk (which fails closed to high when the policy/diff is unreadable).
 do_risk()     { if [ -n "${ORCH_RISK_CMD:-}" ]; then eval "$ORCH_RISK_CMD"; else compute_risk "$1"; fi; }
@@ -335,7 +369,9 @@ run_loop() {
     [ -n "$wave" ] || { stopped='"DEPS"'; break; }
 
     # --- ONE build_wave per ROUND, scoped to the wave, at the throttled cap ----
-    ( export ORCH_MAX_CONCURRENT="$cap"; build_wave $wave ) >/dev/null 2>&1
+    # stdout → the run log (keeps a chatty ORCH_BUILD_CMD out of the summary
+    # JSON this loop prints); stderr flows through, so a failed wave is seen.
+    ( export ORCH_MAX_CONCURRENT="$cap"; build_wave $wave ) >>"$ORCH_RUN_LOG"
 
     local advanced=0 v risk res r st blk cls tier
     for id in $wave; do

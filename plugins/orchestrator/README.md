@@ -25,7 +25,8 @@ state) — not a session file — is the source of truth.
 
 - **Skills**: `enable-orchestrator` (scaffolds the runtime + host scheduler into a
   project), `disable-orchestrator` (removes the loop; the board is preserved),
-  `kickoff` (the daily morning driver).
+  `kickoff` (the daily morning driver), `watch` (live agent tree for a
+  run-to-completion build), `run`, `plan`, `goals`, `compost`.
 - **Agent**: `integration-checker` (verifies overlapping epics still work together).
 - **Workflow**: `nightly-orchestrator` (Phase B — build → verify-like-a-user →
   block-check → integrate → consistency → deploy → gardening → digest).
@@ -49,6 +50,12 @@ state) — not a session file — is the source of truth.
   (doc-health, scoped simplify, deviation scan) instead of only features.
 - **Nothing merges to `main` here.** Approved+green PRs merge at the next kickoff,
   operator present.
+- **The run is observable while it runs.** `run-to-done.sh` streams the engine to
+  `.orch/logs/run-<date>.jsonl` and its stderr beside it; `/orchestrator:watch`
+  renders that as a live agent tree. A failed wave prints its reason instead of
+  escalating silently. Note what this is *not*: a headless run has no interactive
+  channel, so a subagent can never ask you a question mid-run — uncertainty fails
+  closed to `Needs-review`/`Blocked` with a note, and you answer on the PR.
 
 ## Turn it on
 

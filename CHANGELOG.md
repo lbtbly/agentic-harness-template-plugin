@@ -3,6 +3,34 @@
 All notable changes to the harness marketplace. Format: Keep a Changelog; versions are
 the marketplace `metadata.version` (per-plugin versions in each plugin.json).
 
+## [1.9.0] — 2026-07-28
+### Fixed
+- **The run-to-completion build is no longer invisible.** Reported from use: launching
+  `/orchestrator:run` hands the build to a shell loop, and there was no way to see what
+  it was doing. The cause was two discards — `build_wave` ended in
+  `--output-format json >/dev/null 2>&1` and the call site redirected again — which
+  also threw away the **reason** a wave failed, so escalations arrived undiagnosable.
+  The engine now streams to `.orch/logs/run-<date>.jsonl` with stderr beside it, a
+  failed wave prints its exit code and the tail of its stderr, and `verify_epic` keeps
+  its stderr while its stdout stays parseable JSON. Logs are appended rather than piped
+  so the wave's exit code survives, and the log dir self-ignores — the CI runtimes
+  force-add `.orch` to the `orch/state` branch, and machine-local logs must never
+  become commits. `ORCH_STREAM=0` reverts to whole-run JSON, still logged, never
+  discarded.
+
+### Added
+- **`/orchestrator:watch`** — a live agent tree for a running build, plus
+  `orchestrator/bin/watch` (`--replay`, `--errors`, `--date`). Indentation is the tree:
+  child lines are matched to their parent on `parent_tool_use_id`, so you see which
+  subagent called which tool, what failed, and what the run cost. Streaming requests
+  `--forward-subagent-text` (CLI v2.1.211+) but **probes** for it first — passing an
+  unknown flag would have failed every wave on an older CLI — and degrades to a flat
+  stream instead. New `test-run-observability.sh` (26 assertions) pins the regression
+  and renders a synthetic stream end-to-end.
+- Both the `run` skill and the plugin README now state plainly that a headless run has
+  no interactive channel: a subagent cannot ask a question mid-run, so uncertainty
+  fails closed to `Needs-review`/`Blocked` with a note and is answered on the PR.
+
 ## [1.8.0] — 2026-07-27
 ### Added
 - **`local` runtime — the nightly loop on the operator's own machine** (ADR-0033). All

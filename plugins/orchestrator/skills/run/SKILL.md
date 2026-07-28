@@ -25,6 +25,11 @@ scheduled/gated nightly loop, which still exists).
    build until they carry a validated DoD.
 3. Launch the driver:
    `bash orchestrator/runtime/run-to-done.sh <all|first> [N]`
+   The build runs in a **shell loop, not in this session** — that is what makes it
+   survivable across kills. It is not invisible: the engine's stream lands in
+   `.orch/logs/run-<date>.jsonl` and its stderr in `run-<date>.err` as it goes.
+   Tell the operator to open a second terminal and run `/orchestrator:watch`
+   (or `bash orchestrator/bin/watch`) to follow the agent tree live.
    Each round it re-reads the board, admits a wave — dependency-topological on `deps[]`
    first, then footprint-disjoint, then capped by `ORCH_MAX_CONCURRENT` as lowered by the
    usage throttle — and builds that wave once, concurrently (one worktree per epic). It runs

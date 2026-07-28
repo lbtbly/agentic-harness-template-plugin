@@ -1,0 +1,131 @@
+#!/bin/bash
+# orchestrator/bin/watch — render the run stream as a live agent tree.
+#
+# run-to-done.sh writes Claude Code's stream-json to .orch/logs/run-<date>.jsonl.
+# That file is a firehose: one JSON object per event, most of it envelope. This
+# renders the part a human watching a build actually wants — which agent is
+# running, which tool it just called, what came back, and what it cost.
+#
+#   bash orchestrator/bin/watch              # follow today's run
+#   bash orchestrator/bin/watch --replay     # print the whole run and exit
+#   bash orchestrator/bin/watch --date 2026-07-28
+#   bash orchestrator/bin/watch --errors     # just the stderr log
+#
+# Indentation is the agent tree: a line indented under a `subagent` line came
+# from that subagent, matched on parent_tool_use_id — which is exactly what
+# --forward-subagent-text exists to provide.
+set -u
+
+R="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)}"
+LOG_DIR="${ORCH_LOG_DIR:-$R/.orch/logs}"
+DATE=$(date +%F); MODE=follow
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --replay)  MODE=replay ;;
+    --errors)  MODE=errors ;;
+    --date)    shift; DATE="${1:-$DATE}" ;;
+    -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "unknown argument: $1 (try --help)" >&2; exit 2 ;;
+  esac
+  shift
+done
+
+LOG="$LOG_DIR/run-$DATE.jsonl"
+ERR="$LOG_DIR/run-$DATE.err"
+
+if [ "$MODE" = "errors" ]; then
+  [ -s "$ERR" ] || { echo "no errors logged for $DATE ($ERR is empty or absent)"; exit 0; }
+  exec tail -n "${ORCH_WATCH_TAIL:-200}" -f "$ERR"
+fi
+
+if [ ! -f "$LOG" ]; then
+  echo "no run log for $DATE at $LOG" >&2
+  echo "the run writes it as it goes — start /orchestrator:run, or pass --date <YYYY-MM-DD>." >&2
+  ls -1 "$LOG_DIR"/run-*.jsonl 2>/dev/null | sed 's/^/  available: /' >&2
+  exit 1
+fi
+command -v jq >/dev/null 2>&1 || { echo "watch needs jq" >&2; exit 78; }
+
+# Every rendered line is emitted as "<class>|<text>". sed strips the class and
+# paints it — one unambiguous tag beats pattern-matching prose that could
+# legitimately contain any glyph we picked as a marker.
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+  C_DIM=$'\033[2m'; C_AGT=$'\033[36m'; C_OK=$'\033[32m'
+  C_ERR=$'\033[31m'; C_TOOL=$'\033[1m'; C_OFF=$'\033[0m'
+else
+  C_DIM=""; C_AGT=""; C_OK=""; C_ERR=""; C_TOOL=""; C_OFF=""
+fi
+
+# One jq program fed by `inputs`, carrying state across events:
+#   .agents  tool_use_id -> subagent label, so a child line can name its parent
+#   .names   tool_use_id -> tool name, so a tool_result can say what it answers
+# `foreach` is what keeps that state while streaming; a stateless filter cannot
+# tell you which agent a line belongs to, which is the whole point of this view.
+JQ_PROG='
+def oneline: gsub("\\s+"; " ") | sub("^ +"; "");
+def trunc($n): if (.|length) > $n then (.[0:$n] + "…") else . end;
+def argsum($name; $in):
+  if   $name == "Bash"                     then ($in.command // "" | oneline | trunc(88))
+  elif $name == "Skill"                    then (($in.skill // $in.command // "") | tostring)
+  elif $name == "Task" or $name == "Agent" then (($in.description // "") | tostring)
+  elif $name == "Grep"                     then (($in.pattern // "") | tostring)
+  elif $name == "TodoWrite"                then ""
+  else (($in.file_path // $in.path // $in.url // $in.query // "") | tostring | trunc(88))
+  end;
+def restext: if type == "array" then (map(.text // "") | join(" ")) else tostring end;
+
+foreach inputs as $e ({agents:{}, names:{}, out:[]};
+  ($e.parent_tool_use_id // null) as $pid
+  | .ind = (if $pid == null then "" else "   │ " end)
+  | .out = []
+  | if $e.type == "system" and $e.subtype == "init" then
+      .out += ["D|── session \(($e.session_id // "?") | tostring | .[0:8]) · \($e.model // "?") · \($e.cwd // "?")"]
+    else . end
+  | if $e.type == "assistant" then
+      reduce ($e.message.content // [])[] as $c (.;
+        if $c.type == "tool_use" then
+          (($c.name // "?") | tostring) as $n
+          | .names[$c.id] = $n
+          | if ($n == "Task" or $n == "Agent") then
+              ((($c.input.subagent_type // $c.input.agent_type) // "agent") | tostring) as $st
+              | .agents[$c.id] = $st
+              | .out += ["A|\(.ind)┌ subagent \($st) — \(argsum($n; ($c.input // {})))"]
+            else
+              .out += ["T|\(.ind)▸ \($n) \(argsum($n; ($c.input // {})))"]
+            end
+        elif $c.type == "text" and (($c.text // "") | oneline | length) > 0 then
+          .out += ["D|\(.ind)  \($c.text | oneline | trunc(150))"]
+        else . end)
+    else . end
+  | if $e.type == "user" then
+      reduce ($e.message.content // [])[] as $c (.;
+        if $c.type == "tool_result" then
+          ((.names[$c.tool_use_id] // "") | tostring) as $n
+          | if ($c.is_error // false) then
+              .out += ["E|\(.ind)✗ \($n) — \(($c.content // "") | restext | oneline | trunc(120))"]
+            elif ((.agents[$c.tool_use_id] // null) != null) then
+              .out += ["K|\(.ind)└ subagent \(.agents[$c.tool_use_id]) returned"]
+            else . end
+        else . end)
+    else . end
+  | if $e.type == "result" then
+      .out += ["D|── \($e.subtype // "done") · \($e.num_turns // 0) turns · $\((((($e.total_cost_usd // 0) * 1000) | floor) / 1000)) · \((($e.duration_ms // 0) / 1000) | floor)s"]
+    else . end
+  ; .out[]
+)'
+
+render() {
+  jq -rn --unbuffered "$JQ_PROG" 2>/dev/null \
+  | sed -e "s/^D|/${C_DIM}/" -e "s/^A|/${C_AGT}/" -e "s/^K|/${C_OK}/" \
+        -e "s/^E|/${C_ERR}/" -e "s/^T|/${C_TOOL}/" -e "s/\$/${C_OFF}/"
+}
+
+if [ "$MODE" = "replay" ]; then
+  render < "$LOG"
+  if [ -s "$ERR" ]; then printf '\n%sstderr (%s):%s\n' "$C_ERR" "$ERR" "$C_OFF"; tail -20 "$ERR"; fi
+  exit 0
+fi
+
+printf '%swatching %s — ctrl-c to stop%s\n' "$C_DIM" "$LOG" "$C_OFF"
+tail -n "${ORCH_WATCH_TAIL:-0}" -f "$LOG" | render
