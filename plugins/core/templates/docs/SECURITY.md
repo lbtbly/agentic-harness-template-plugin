@@ -34,6 +34,32 @@ Each layer is sufficient on its own. A mistake never exposes a value.
 - A key committed by mistake = considered compromised even after removing
   the commit (history and caches exist) → rotation, not cleanup.
 
+## Never print a credential — the `:+` rule
+Checking whether a credential is configured is a routine, reasonable thing to do.
+There is exactly **one** safe way to write it:
+
+```bash
+echo "token set: ${SLACK_BOT_TOKEN:+yes}"      # SAFE — prints "yes" or nothing
+echo "token set: ${SLACK_BOT_TOKEN:-no}"       # LEAKS THE VALUE
+```
+
+`${VAR:-fallback}` substitutes the fallback only when the variable is **unset**;
+when it *is* set — the case you are testing for — it expands to the value. The two
+forms look interchangeable and are not. Only `${VAR:+…}` and `${VAR+…}` can never
+emit the secret.
+
+The same trap in other shapes: a bare `env` or `printenv` dumps every credential in
+scope, and `env | grep TOKEN` prints the value while `env | grep -c TOKEN` prints a
+count. Prefer `printenv PATH`-style filtering, or a count.
+
+**This is enforced, not merely advised**: `secret-guard.sh` blocks a printing command
+that references a credential-named variable in any form other than `:+`. The rule
+exists because the advisory version was not enough — on 2026-07-28 a probe written as
+`${VAR:+YES}${VAR:-NO}` printed a live token into a transcript.
+
+**If a value ever reaches a transcript, log or terminal: rotate it.** Redaction after
+the fact is not a control; the value existed in a place it should not have.
+
 ## Claude's scope
 - Readable: `.env.example`, variable names, this file.
 - Forbidden: secret values, `.env*` files, private keys, `secrets/`.

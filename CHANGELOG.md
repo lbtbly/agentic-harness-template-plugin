@@ -3,6 +3,90 @@
 All notable changes to the harness marketplace. Format: Keep a Changelog; versions are
 the marketplace `metadata.version` (per-plugin versions in each plugin.json).
 
+## [1.11.0] — 2026-07-28
+### Fixed
+- **The secret guard policed what Claude reads, never what Claude emits.** Found the
+  hard way: a probe written to answer "is the token set?" printed a live Slack token
+  into a transcript. `${VAR:+yes}` reports presence without expanding; `${VAR:-no}`
+  substitutes only when the variable is **unset**, so a variable that *is* set expands
+  to its value. The two forms look interchangeable and are not.
+  - `secret-guard.sh` now blocks a printing command (`echo`/`printf`) that references a
+    credential-named variable in any form other than `:+`/`+`. Passing a credential to
+    `curl` is untouched — the offence is printing it, not using it. A bare
+    `env`/`printenv` is blocked too, and piping it does not help: `env | grep TOKEN`
+    prints the value, so only sinks that structurally cannot emit one (`grep -c`,
+    `grep -q`, `wc -l`) pass.
+  - New `secret-egress.sh` (PostToolUse) reads tool *output* for issuer-prefixed
+    credentials — Slack, Anthropic, GitHub, GitLab, AWS, Google, OpenAI, PEM private
+    keys — and names the **class**, never the value. It is advisory by construction and
+    always exits 0: a credential already in the transcript cannot be un-printed, so it
+    tells you to rotate rather than failing the call. Quiet on commit shas, npm
+    integrity hashes and variable *names*, because a detector that is usually wrong gets
+    ignored exactly when it is right.
+  - `docs/SECURITY.md` documents the `:+` rule and states plainly that a value which
+    reaches a transcript must be rotated, not redacted.
+  - New `test-secret-egress.sh` (30 assertions) pins both halves, including that the
+    detector never echoes what it found.
+- Caught while testing: the private-key pattern begins with `-----`, which `grep` read
+  as options — without `--` the detector would have errored on **every** tool result
+  instead of matching.
+
+## [1.10.0] — 2026-07-28
+### Added
+- **Per-project Slack notifications** — `orchestrator/adapters/notify-slack.sh`. One
+  channel per repo (`cchar-<repo>`, derived from the git toplevel, slugified to Slack's
+  rules and created on first use), posted at four milestones: wave admitted, epic landed,
+  epic escalated, run finished with its `stopped_by` reason. Configured by a single
+  `SLACK_BOT_TOKEN` (scopes `chat:write`, `chat:write.public`, `channels:manage`,
+  `channels:read`), read from the environment or **parsed** — never sourced — out of a
+  local env file.
+  - **A notification may never break a run.** No token, no network, a Slack error, a
+    malformed reply: every path exits 0. Unconfigured is the normal case and is silent.
+  - **It posts as a bot**, which is the point. Investigated first: the claude.ai Slack
+    connector posts with the *user's* token, so agent and human are one identity, and it
+    is unreachable from a headless run anyway — connectors are not loaded when
+    `CLAUDE_CODE_OAUTH_TOKEN` is the auth lane, and `--strict-mcp-config` excludes them.
+  - **The agent cannot read the token**: `SLACK_BOT_TOKEN` joins the model and delivery
+    credentials denied to tool subprocesses. The driver invokes the adapter outside the
+    model's tool surface, so denying it costs nothing and closes an exfiltration path.
+  - `slack.com` is documented in `egress-allowlist.txt` but ships **commented** — same
+    posture as the board backends, since every entry widens the blast radius. The adapter
+    names the allowlist explicitly when a call gets no response, because a fail-closed
+    sandbox is otherwise indistinguishable from "nothing happened".
+  - New `test-notify-slack.sh` (27 assertions), including that the token is never echoed
+    on a failure path and that the slug clamps to 80 chars without truncating the prefix.
+- This repo now carries the secret-ignoring rules it scaffolds into every project it
+  initializes — it had none, and the token would have been one `git add -A` from
+  publication.
+
+## [1.9.0] — 2026-07-28
+### Fixed
+- **The run-to-completion build is no longer invisible.** Reported from use: launching
+  `/orchestrator:run` hands the build to a shell loop, and there was no way to see what
+  it was doing. The cause was two discards — `build_wave` ended in
+  `--output-format json >/dev/null 2>&1` and the call site redirected again — which
+  also threw away the **reason** a wave failed, so escalations arrived undiagnosable.
+  The engine now streams to `.orch/logs/run-<date>.jsonl` with stderr beside it, a
+  failed wave prints its exit code and the tail of its stderr, and `verify_epic` keeps
+  its stderr while its stdout stays parseable JSON. Logs are appended rather than piped
+  so the wave's exit code survives, and the log dir self-ignores — the CI runtimes
+  force-add `.orch` to the `orch/state` branch, and machine-local logs must never
+  become commits. `ORCH_STREAM=0` reverts to whole-run JSON, still logged, never
+  discarded.
+
+### Added
+- **`/orchestrator:watch`** — a live agent tree for a running build, plus
+  `orchestrator/bin/watch` (`--replay`, `--errors`, `--date`). Indentation is the tree:
+  child lines are matched to their parent on `parent_tool_use_id`, so you see which
+  subagent called which tool, what failed, and what the run cost. Streaming requests
+  `--forward-subagent-text` (CLI v2.1.211+) but **probes** for it first — passing an
+  unknown flag would have failed every wave on an older CLI — and degrades to a flat
+  stream instead. New `test-run-observability.sh` (26 assertions) pins the regression
+  and renders a synthetic stream end-to-end.
+- Both the `run` skill and the plugin README now state plainly that a headless run has
+  no interactive channel: a subagent cannot ask a question mid-run, so uncertainty
+  fails closed to `Needs-review`/`Blocked` with a note and is answered on the PR.
+
 ## [1.8.0] — 2026-07-27
 ### Added
 - **`local` runtime — the nightly loop on the operator's own machine** (ADR-0033). All

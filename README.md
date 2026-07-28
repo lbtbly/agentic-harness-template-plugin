@@ -101,6 +101,45 @@ so two agents never take the same work and a crashed agent's card returns to the
 being stranded. A card a human wrote is picked up like any other; the harness does not have to
 have invented it (ADR-0027).
 
+## Run notifications (optional, 5 minutes)
+
+The loop posts to **one Slack channel per project** — `cchar-<repo>`, created on first
+use — when a wave starts, an epic lands, an epic escalates, and when the run ends with
+its `stopped_by` reason. It posts as a **bot**, so its messages are never confusable
+with yours.
+
+1. Create a Slack app at **api.slack.com/apps** → *From scratch*. Under **OAuth &
+   Permissions → Bot Token Scopes** add `chat:write`, `chat:write.public`,
+   `channels:manage`, `channels:read` — **Bot** scopes, not User scopes, or it posts as
+   you. Install to the workspace and copy the `xoxb-…` token.
+2. Export it once, for every project on the machine. Paste it into the file rather than
+   `echo`-ing it, which would put a live credential in your shell history — and use
+   **`~/.zshenv`**, not `~/.zshrc`: zsh reads `.zshrc` only for *interactive* shells, so a
+   token exported there is invisible to scripts and tooling.
+
+   ```bash
+   # ~/.zshenv  (zsh)  ·  ~/.bash_profile (bash)
+   export SLACK_BOT_TOKEN="xoxb-…"
+   ```
+
+   A project-level env file overrides it if one repo needs a different workspace.
+   **launchd and cron read no profile at all**, so a scheduled `local` run takes the
+   token from the plist's `EnvironmentVariables` or from that project env file.
+3. **If the loop runs sandboxed**, uncomment `slack.com` in
+   `orchestrator/egress-allowlist.txt` and mirror it into `settings.orchestrator.json`
+   and `.devcontainer/init-firewall.sh`. Otherwise every notification fails closed —
+   silently, because a notification may never break a build.
+
+Unset the token and the adapter no-ops: notifications are additive, never load-bearing.
+Override the channel with `ORCH_SLACK_CHANNEL`, or just the prefix with
+`ORCH_SLACK_PREFIX` (default `cchar-`; Slack forces lowercase).
+
+> The claude.ai Slack **connector** is a different thing and will not work here: it posts
+> with *your* token, so the agent and you are one identity, and it is unreachable from a
+> headless run — connectors aren't loaded when `CLAUDE_CODE_OAUTH_TOKEN` is the auth lane,
+> and `--strict-mcp-config` excludes them. Keep it for interactive sessions; use the bot
+> for the loop.
+
 ## When it gets something wrong
 
 Three loops close on the harness itself:

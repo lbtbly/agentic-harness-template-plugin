@@ -9,6 +9,42 @@
 set -u
 R="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 
+# --- run log ------------------------------------------------------------------
+# Everything the engine emits lands here. It used to go to /dev/null, which also
+# threw away the REASON a wave failed: an escalation with no diagnosis, and no
+# way to see which agent did what. `orchestrator/bin/watch` renders this live.
+# Self-ignoring, because the CI runtimes force-add .orch to the orch/state branch
+# and machine-local logs must never become commits.
+ORCH_LOG_DIR="${ORCH_LOG_DIR:-$R/.orch/logs}"
+mkdir -p "$ORCH_LOG_DIR" 2>/dev/null || true
+[ -f "$ORCH_LOG_DIR/.gitignore" ] || printf '*\n!.gitignore\n' > "$ORCH_LOG_DIR/.gitignore" 2>/dev/null || true
+ORCH_RUN_LOG="${ORCH_RUN_LOG:-$ORCH_LOG_DIR/run-$(date +%F).jsonl}"
+ORCH_ERR_LOG="${ORCH_ERR_LOG:-$ORCH_LOG_DIR/run-$(date +%F).err}"
+
+# stream_flags — stream-json so the run is observable while it runs, not after.
+# --forward-subagent-text (CLI v2.1.211+) is what makes subagent messages carry
+# parent_tool_use_id, i.e. what turns a blob into an agent tree. Probed, never
+# assumed: passing an unknown flag would fail EVERY wave on an older CLI.
+ORCH_STREAM="${ORCH_STREAM:-1}"
+stream_flags() {
+  [ "$ORCH_STREAM" = "1" ] || { echo "--output-format json"; return; }
+  local f="--output-format stream-json --verbose"
+  case "$(claude -p --help 2>/dev/null)" in
+    *--forward-subagent-text*) f="$f --forward-subagent-text" ;;
+  esac
+  echo "$f"
+}
+
+# notify <event> <text…> — per-project Slack line, best-effort and always silent
+# on failure. Notifications must never be able to fail a build: the adapter exits
+# 0 for every error, and this wrapper additionally survives the adapter being
+# absent (an older scaffold) or unconfigured (no token, the normal case).
+notify() {
+  local a="$R/orchestrator/adapters/notify-slack.sh"
+  [ -x "$a" ] || return 0
+  ( bash "$a" "$@" >/dev/null 2>>"${ORCH_ERR_LOG:-/dev/null}" ) || true
+}
+
 # orch_bin — resolve the orch CLI at call time (ORCH_BIN overridable for tests).
 orch_bin() { echo "${ORCH_BIN:-$R/orchestrator/bin/orch}"; }
 
@@ -242,11 +278,19 @@ MODELS_JSON() { jq -c . "$R/orchestrator/models.config.json" 2>/dev/null || echo
 # build_wave [epic-ids…] — ONE call per ROUND, scoped to the admitted wave.
 # maxEpics is the THROTTLED cap the loop exports before calling.
 build_wave()  { if [ -n "${ORCH_BUILD_CMD:-}" ]; then eval "$ORCH_BUILD_CMD"; else
+  local rc
+  # Appended, never piped: a pipe would hand $? to tee and hide a failed wave.
   claude -p "Run the nightly-orchestrator workflow with args {\"date\":\"$(date +%F)\",\"epics\":$(json_arr "$@"),\"maxEpics\":${ORCH_MAX_CONCURRENT:-4},\"models\":$(MODELS_JSON)}." \
     --settings "$R/orchestrator/settings.orchestrator.json" ${ORCH_PLUGIN_DIR:+--plugin-dir "$ORCH_PLUGIN_DIR"} \
     --max-turns "${ORCH_MAX_TURNS:-80}" ${ORCH_MAX_BUDGET_USD:+--max-budget-usd "$ORCH_MAX_BUDGET_USD"} \
     --strict-mcp-config --mcp-config "$R/.mcp.json" \
-    --output-format json >/dev/null 2>&1; fi; }
+    $(stream_flags) >>"$ORCH_RUN_LOG" 2>>"$ORCH_ERR_LOG"
+  rc=$?
+  # A failed wave must say why. Silent failure is what made escalations
+  # undiagnosable: the epic came back Blocked and the reason was in /dev/null.
+  [ "$rc" -eq 0 ] || { echo "build wave FAILED (exit $rc) — last lines of $ORCH_ERR_LOG:" >&2
+                       tail -5 "$ORCH_ERR_LOG" >&2; }
+  return $rc; fi; }
 verify_epic() { if [ -n "${ORCH_VERIFY_CMD:-}" ]; then eval "$ORCH_VERIFY_CMD"; else
   claude -p "Run dod-verify for epic $1; return the verdict.
 You did not build this. Verify against the feature list like a USER, not like CI.
@@ -255,7 +299,7 @@ only what you can point to evidence for. Default to reject if uncertain." \
     --output-format json --json-schema "$(cat "$R/orchestrator/verdict.schema.json")" \
     --max-turns "${ORCH_MAX_TURNS:-80}" ${ORCH_MAX_BUDGET_USD:+--max-budget-usd "$ORCH_MAX_BUDGET_USD"} \
     --strict-mcp-config --mcp-config "$R/.mcp.json" \
-    2>/dev/null | jq -c '.structured_output // .result // .'; fi; }
+    2>>"$ORCH_ERR_LOG" | jq -c '.structured_output // .result // .'; fi; }
 # risk: computed per epic BEFORE any merge decision — from the real diff via
 # compute_risk (which fails closed to high when the policy/diff is unreadable).
 do_risk()     { if [ -n "${ORCH_RISK_CMD:-}" ]; then eval "$ORCH_RISK_CMD"; else compute_risk "$1"; fi; }
@@ -335,7 +379,10 @@ run_loop() {
     [ -n "$wave" ] || { stopped='"DEPS"'; break; }
 
     # --- ONE build_wave per ROUND, scoped to the wave, at the throttled cap ----
-    ( export ORCH_MAX_CONCURRENT="$cap"; build_wave $wave ) >/dev/null 2>&1
+    # stdout → the run log (keeps a chatty ORCH_BUILD_CMD out of the summary
+    # JSON this loop prints); stderr flows through, so a failed wave is seen.
+    notify wave "🔨 *Wave admitted* — building: $(echo $wave | tr ' ' ',') (cap $cap)"
+    ( export ORCH_MAX_CONCURRENT="$cap"; build_wave $wave ) >>"$ORCH_RUN_LOG"
 
     local advanced=0 v risk res r st blk cls tier
     for id in $wave; do
@@ -357,6 +404,7 @@ run_loop() {
           escalated=$(set_add "$escalated" "$id")
           do_trust_record "$cls" pass
           push_status "$id" Needs-review "verified, but class '$cls' is tier=$tier — review required (risk=$risk)"
+          notify escalated "🔎 *$id* — verified, awaiting review. Class \`$cls\` is tier \`$tier\`, risk \`$risk\`. \`/orch approve\` or \`/orch revise: <notes>\`"
           continue
         fi
         res=$(do_merge "$id" "$risk" "$v")
@@ -366,6 +414,7 @@ run_loop() {
             do_trust_record "$cls" pass
             do_publish "$id" || echo "run-to-done: $id proved green locally but could not be published to the forge — it will NOT land; check the remote/PR" >&2
             push_status "$id" Merged "landed by run-to-done (risk=$risk)"
+            notify merged "✅ *$id* landed (risk \`$risk\`)"
             ;;
           reverted)
             # Merged cleanly but the post-merge suite went red: NOT done. Back to
@@ -376,6 +425,7 @@ run_loop() {
             if [ "$(guard_no_progress "$r" "$k")" = blocked ]; then
               blocked=$(set_add "$blocked" "$id")
               push_status "$id" Blocked "attempts=$r blocked: post-merge suite red — needs human triage"
+              notify blocked "⛔ *$id* BLOCKED after $r attempts — green alone, red after merging. Needs human triage."
             else
               push_status "$id" "$st" "attempts=$r post-merge suite red, merge reverted"
             fi
@@ -383,6 +433,7 @@ run_loop() {
           *)  # escalated: high risk, not auto-mergeable, or a dirty merge
             escalated=$(set_add "$escalated" "$id")
             push_status "$id" Needs-review "escalated by run-to-done (risk=$risk) — awaiting /orch approve"
+            notify escalated "🔎 *$id* escalated (risk \`$risk\`) — not auto-mergeable. \`/orch approve\` or \`/orch revise: <notes>\`"
             ;;
         esac
       else
@@ -393,6 +444,7 @@ run_loop() {
         if [ "$(guard_no_progress "$r" "$k")" = blocked ]; then
           blocked=$(set_add "$blocked" "$id")
           push_status "$id" Blocked "attempts=$r blocked: ${blk:-no progress} — needs human triage"
+          notify blocked "⛔ *$id* BLOCKED after $r attempts — ${blk:-no progress}. Needs human triage."
         else
           # DURABLE: the next re-entry reads attempts=$r back out of this note.
           push_status "$id" "$st" "attempts=$r ${blk:-}"
@@ -404,6 +456,14 @@ run_loop() {
     # verdict — the engine did nothing and the loop would otherwise busy-spin.
     [ "$(guard_thrash "$advanced")" = stop ] && { stopped='"THRASH"'; break; }
   done
+
+  # The closing line is the one notification worth reading cold: what landed,
+  # what is waiting on you, and WHY the run ended — `stopped_by` is the field
+  # that distinguishes "scope drained" from "hit the budget wall".
+  notify done "🏁 *Run finished* — stopped_by \`$(printf '%s' "$stopped" | tr -d '"')\`
+• landed: ${merged:-none}
+• awaiting review: ${escalated:-none}
+• blocked: ${blocked:-none}"
 
   # word-splitting is intentional: ids are slug-safe words (bash-3.2 containers).
   printf '{"merged":%s,"escalated":%s,"blocked":%s,"rounds":%s,"stopped_by":%s}\n' \
