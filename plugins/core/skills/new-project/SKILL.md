@@ -209,7 +209,25 @@ plugin and it does **not** park/compose anything — optional capabilities are a
                               # chosen style brief in DESIGN.md so hooks enforce it
    ```
 
-9. **Verify & commit**: `jq .` valid on `.claude/settings.json`, `.claude/policy.json`,
+9. **Offer run notifications** (last question, after the scaffold is green — never
+   before, since it is optional and additive). Ask once whether the operator wants the
+   loop to post progress to Slack. If yes, tell them — do NOT do it for them, and never
+   ask for or handle the token value:
+   - create a Slack app (api.slack.com/apps → *From scratch*) with **Bot** Token Scopes
+     `chat:write`, `chat:write.public`, `channels:manage`, `channels:read` — user scopes
+     would post as *them*, which defeats the point;
+   - `export SLACK_BOT_TOKEN="xoxb-…"` in **`~/.zshenv`** (not `~/.zshrc`, which zsh
+     reads only for interactive shells, leaving it invisible to every script), pasted
+     into the file rather than `echo`-ed, which would put a live credential in shell
+     history. launchd and cron read no profile at all, so a scheduled `local` run needs
+     it in the plist or the project env file;
+   - the loop then posts to `cchar-<repo>`, created on first use.
+   Record only the NAME in `.env.example`. If the profile is `autonomous`, add the
+   reminder that `slack.com` must be uncommented in `orchestrator/egress-allowlist.txt`
+   and mirrored into both enforcers before the first sandboxed run, or every
+   notification fails closed. Declining is the default and costs nothing: the adapter
+   no-ops without a token.
+10. **Verify & commit**: `jq .` valid on `.claude/settings.json`, `.claude/policy.json`,
    `orchestrator/state.config.json`, `.orch/feature-list.schema.json`; after the design
    merge `.claude/settings.json` must still have `permissions.defaultMode == "plan"`, and
    `enabledPlugins["impeccable@impeccable"]` + `enabledPlugins["styles-library@styles-library"]`
