@@ -1,5 +1,5 @@
 {
-  "$comment": "core hooks. Paths resolve via ${CLAUDE_PLUGIN_ROOT} (the plugin dir), NOT the project — the scripts read project data via $CLAUDE_PROJECT_DIR internally. Security invariants (secret-guard, protect-paths) are always-on; policy hooks self-gate via .claude/policy.json. Replaces the old generated .claude/settings.json hook wiring (ADR-0013/0014). The observe-*/session-end hooks are ADVISORY (never block, always exit 0) and write the append-only journal at .orch/journal/ — gate them off with the 'journal' policy key.",
+  "$comment": "core hooks. Paths resolve via ${CLAUDE_PLUGIN_ROOT} (the plugin dir), NOT the project \u2014 the scripts read project data via $CLAUDE_PROJECT_DIR internally. Security invariants (secret-guard, protect-paths) are always-on; policy hooks self-gate via .claude/policy.json. Replaces the old generated .claude/settings.json hook wiring (ADR-0013/0014). The observe-*/session-end hooks are ADVISORY (never block, always exit 0) and write the append-only journal at .orch/journal/ \u2014 gate them off with the 'journal' policy key.",
   "hooks": {
     "PreToolUse": [
       {
@@ -60,6 +60,16 @@
           {
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/observe-tool-result.sh\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Read|Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/secret-egress.sh\"",
             "timeout": 10
           }
         ]

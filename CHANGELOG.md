@@ -3,6 +3,34 @@
 All notable changes to the harness marketplace. Format: Keep a Changelog; versions are
 the marketplace `metadata.version` (per-plugin versions in each plugin.json).
 
+## [1.11.0] — 2026-07-28
+### Fixed
+- **The secret guard policed what Claude reads, never what Claude emits.** Found the
+  hard way: a probe written to answer "is the token set?" printed a live Slack token
+  into a transcript. `${VAR:+yes}` reports presence without expanding; `${VAR:-no}`
+  substitutes only when the variable is **unset**, so a variable that *is* set expands
+  to its value. The two forms look interchangeable and are not.
+  - `secret-guard.sh` now blocks a printing command (`echo`/`printf`) that references a
+    credential-named variable in any form other than `:+`/`+`. Passing a credential to
+    `curl` is untouched — the offence is printing it, not using it. A bare
+    `env`/`printenv` is blocked too, and piping it does not help: `env | grep TOKEN`
+    prints the value, so only sinks that structurally cannot emit one (`grep -c`,
+    `grep -q`, `wc -l`) pass.
+  - New `secret-egress.sh` (PostToolUse) reads tool *output* for issuer-prefixed
+    credentials — Slack, Anthropic, GitHub, GitLab, AWS, Google, OpenAI, PEM private
+    keys — and names the **class**, never the value. It is advisory by construction and
+    always exits 0: a credential already in the transcript cannot be un-printed, so it
+    tells you to rotate rather than failing the call. Quiet on commit shas, npm
+    integrity hashes and variable *names*, because a detector that is usually wrong gets
+    ignored exactly when it is right.
+  - `docs/SECURITY.md` documents the `:+` rule and states plainly that a value which
+    reaches a transcript must be rotated, not redacted.
+  - New `test-secret-egress.sh` (30 assertions) pins both halves, including that the
+    detector never echoes what it found.
+- Caught while testing: the private-key pattern begins with `-----`, which `grep` read
+  as options — without `--` the detector would have errored on **every** tool result
+  instead of matching.
+
 ## [1.10.0] — 2026-07-28
 ### Added
 - **Per-project Slack notifications** — `orchestrator/adapters/notify-slack.sh`. One
