@@ -50,6 +50,12 @@ state) — not a session file — is the source of truth.
   (doc-health, scoped simplify, deviation scan) instead of only features.
 - **Nothing merges to `main` here.** Approved+green PRs merge at the next kickoff,
   operator present.
+- **It tells you what happened, per project.** `adapters/notify-slack.sh` posts to
+  one channel per repo (`cchar-<repo>`, created on first use) at four moments: wave
+  admitted, epic landed, epic escalated, run finished with its `stopped_by`. It posts
+  as a **bot**, so the loop's messages are never confusable with yours, and it
+  **no-ops silently** without `SLACK_BOT_TOKEN` — a notification may never break a
+  build. Uncomment `slack.com` in the egress allowlist or it fails closed.
 - **The run is observable while it runs.** `run-to-done.sh` streams the engine to
   `.orch/logs/run-<date>.jsonl` and its stderr beside it; `/orchestrator:watch`
   renders that as a live agent tree. A failed wave prints its reason instead of

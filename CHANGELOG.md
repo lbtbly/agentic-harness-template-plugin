@@ -3,6 +3,34 @@
 All notable changes to the harness marketplace. Format: Keep a Changelog; versions are
 the marketplace `metadata.version` (per-plugin versions in each plugin.json).
 
+## [1.10.0] — 2026-07-28
+### Added
+- **Per-project Slack notifications** — `orchestrator/adapters/notify-slack.sh`. One
+  channel per repo (`cchar-<repo>`, derived from the git toplevel, slugified to Slack's
+  rules and created on first use), posted at four milestones: wave admitted, epic landed,
+  epic escalated, run finished with its `stopped_by` reason. Configured by a single
+  `SLACK_BOT_TOKEN` (scopes `chat:write`, `chat:write.public`, `channels:manage`,
+  `channels:read`), read from the environment or **parsed** — never sourced — out of a
+  local env file.
+  - **A notification may never break a run.** No token, no network, a Slack error, a
+    malformed reply: every path exits 0. Unconfigured is the normal case and is silent.
+  - **It posts as a bot**, which is the point. Investigated first: the claude.ai Slack
+    connector posts with the *user's* token, so agent and human are one identity, and it
+    is unreachable from a headless run anyway — connectors are not loaded when
+    `CLAUDE_CODE_OAUTH_TOKEN` is the auth lane, and `--strict-mcp-config` excludes them.
+  - **The agent cannot read the token**: `SLACK_BOT_TOKEN` joins the model and delivery
+    credentials denied to tool subprocesses. The driver invokes the adapter outside the
+    model's tool surface, so denying it costs nothing and closes an exfiltration path.
+  - `slack.com` is documented in `egress-allowlist.txt` but ships **commented** — same
+    posture as the board backends, since every entry widens the blast radius. The adapter
+    names the allowlist explicitly when a call gets no response, because a fail-closed
+    sandbox is otherwise indistinguishable from "nothing happened".
+  - New `test-notify-slack.sh` (27 assertions), including that the token is never echoed
+    on a failure path and that the slug clamps to 80 chars without truncating the prefix.
+- This repo now carries the secret-ignoring rules it scaffolds into every project it
+  initializes — it had none, and the token would have been one `git add -A` from
+  publication.
+
 ## [1.9.0] — 2026-07-28
 ### Fixed
 - **The run-to-completion build is no longer invisible.** Reported from use: launching

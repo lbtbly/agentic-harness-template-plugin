@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "workbench",
   "description": "Extra specialists: security-auditor (the second gate on risky merges), refactorer (worktree-isolated mass changes), researcher (sourced external knowledge), test-runner; the db-migration skill.",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "author": {
     "name": "lambertbouley"
   },

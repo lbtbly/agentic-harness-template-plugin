@@ -1,5 +1,19 @@
 .DS_Store
 node_modules/
+
+# --- secrets (layer 1 of 3 — docs/SECURITY.md) ---
+# This repo scaffolds these rules into every project it initializes but never
+# carried them itself. It does now: the Slack bot token for run notifications
+# lives in a local env file, and one `git add -A` without this block would
+# publish it.
+.env
+.env.*
+!.env.example
+.envrc
+*.pem
+*.key
+secrets/
+
 .orch/cache/
 # This repo is the MARKETPLACE, not an installed harness — it has no real state
 # layer. Running the test suite exercises the guard hooks, and journal() falls

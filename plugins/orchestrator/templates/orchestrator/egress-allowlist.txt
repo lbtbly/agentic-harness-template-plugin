@@ -20,3 +20,11 @@ files.pythonhosted.org
 # api.notion.com          # backend: notion
 # <your-site>.atlassian.net   # backend: jira — per-tenant, no fixed host
 # gitlab.com                  # backend: gitlab — or your self-hosted host
+
+# --- run notifications: NOT enabled by default -------------------------------
+# notify-slack.sh posts from INSIDE the sandbox, so slack.com must be reachable
+# or every notification fails closed (silently — the adapter never breaks a run,
+# which is exactly why a missing entry here is easy to miss). Uncomment it AND
+# mirror it into settings.orchestrator.json + init-firewall.sh; the parity test
+# enforces that once it is uncommented.
+# slack.com               # notify-slack.sh (SLACK_BOT_TOKEN)

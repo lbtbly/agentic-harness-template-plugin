@@ -35,6 +35,16 @@ stream_flags() {
   echo "$f"
 }
 
+# notify <event> <text…> — per-project Slack line, best-effort and always silent
+# on failure. Notifications must never be able to fail a build: the adapter exits
+# 0 for every error, and this wrapper additionally survives the adapter being
+# absent (an older scaffold) or unconfigured (no token, the normal case).
+notify() {
+  local a="$R/orchestrator/adapters/notify-slack.sh"
+  [ -x "$a" ] || return 0
+  ( bash "$a" "$@" >/dev/null 2>>"${ORCH_ERR_LOG:-/dev/null}" ) || true
+}
+
 # orch_bin — resolve the orch CLI at call time (ORCH_BIN overridable for tests).
 orch_bin() { echo "${ORCH_BIN:-$R/orchestrator/bin/orch}"; }
 
@@ -371,6 +381,7 @@ run_loop() {
     # --- ONE build_wave per ROUND, scoped to the wave, at the throttled cap ----
     # stdout → the run log (keeps a chatty ORCH_BUILD_CMD out of the summary
     # JSON this loop prints); stderr flows through, so a failed wave is seen.
+    notify wave "🔨 *Wave admitted* — building: $(echo $wave | tr ' ' ',') (cap $cap)"
     ( export ORCH_MAX_CONCURRENT="$cap"; build_wave $wave ) >>"$ORCH_RUN_LOG"
 
     local advanced=0 v risk res r st blk cls tier
@@ -393,6 +404,7 @@ run_loop() {
           escalated=$(set_add "$escalated" "$id")
           do_trust_record "$cls" pass
           push_status "$id" Needs-review "verified, but class '$cls' is tier=$tier — review required (risk=$risk)"
+          notify escalated "🔎 *$id* — verified, awaiting review. Class \`$cls\` is tier \`$tier\`, risk \`$risk\`. \`/orch approve\` or \`/orch revise: <notes>\`"
           continue
         fi
         res=$(do_merge "$id" "$risk" "$v")
@@ -402,6 +414,7 @@ run_loop() {
             do_trust_record "$cls" pass
             do_publish "$id" || echo "run-to-done: $id proved green locally but could not be published to the forge — it will NOT land; check the remote/PR" >&2
             push_status "$id" Merged "landed by run-to-done (risk=$risk)"
+            notify merged "✅ *$id* landed (risk \`$risk\`)"
             ;;
           reverted)
             # Merged cleanly but the post-merge suite went red: NOT done. Back to
@@ -412,6 +425,7 @@ run_loop() {
             if [ "$(guard_no_progress "$r" "$k")" = blocked ]; then
               blocked=$(set_add "$blocked" "$id")
               push_status "$id" Blocked "attempts=$r blocked: post-merge suite red — needs human triage"
+              notify blocked "⛔ *$id* BLOCKED after $r attempts — green alone, red after merging. Needs human triage."
             else
               push_status "$id" "$st" "attempts=$r post-merge suite red, merge reverted"
             fi
@@ -419,6 +433,7 @@ run_loop() {
           *)  # escalated: high risk, not auto-mergeable, or a dirty merge
             escalated=$(set_add "$escalated" "$id")
             push_status "$id" Needs-review "escalated by run-to-done (risk=$risk) — awaiting /orch approve"
+            notify escalated "🔎 *$id* escalated (risk \`$risk\`) — not auto-mergeable. \`/orch approve\` or \`/orch revise: <notes>\`"
             ;;
         esac
       else
@@ -429,6 +444,7 @@ run_loop() {
         if [ "$(guard_no_progress "$r" "$k")" = blocked ]; then
           blocked=$(set_add "$blocked" "$id")
           push_status "$id" Blocked "attempts=$r blocked: ${blk:-no progress} — needs human triage"
+          notify blocked "⛔ *$id* BLOCKED after $r attempts — ${blk:-no progress}. Needs human triage."
         else
           # DURABLE: the next re-entry reads attempts=$r back out of this note.
           push_status "$id" "$st" "attempts=$r ${blk:-}"
@@ -440,6 +456,14 @@ run_loop() {
     # verdict — the engine did nothing and the loop would otherwise busy-spin.
     [ "$(guard_thrash "$advanced")" = stop ] && { stopped='"THRASH"'; break; }
   done
+
+  # The closing line is the one notification worth reading cold: what landed,
+  # what is waiting on you, and WHY the run ended — `stopped_by` is the field
+  # that distinguishes "scope drained" from "hit the budget wall".
+  notify done "🏁 *Run finished* — stopped_by \`$(printf '%s' "$stopped" | tr -d '"')\`
+• landed: ${merged:-none}
+• awaiting review: ${escalated:-none}
+• blocked: ${blocked:-none}"
 
   # word-splitting is intentional: ids are slug-safe words (bash-3.2 containers).
   printf '{"merged":%s,"escalated":%s,"blocked":%s,"rounds":%s,"stopped_by":%s}\n' \
